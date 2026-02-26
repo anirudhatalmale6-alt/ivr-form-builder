@@ -596,7 +596,7 @@ if (DB.tables.length === 0) {
         tableId: DB.tables[0].id,
         steps: [
             { id: genId(), type: 'auto_capture', name: 'זיהוי מתקשר', systemField: 'phone', targetColumn: DB.tables[0].columns[0].id },
-            { id: genId(), type: 'display_data', name: 'השמעת פרטים', lookupColumn: DB.tables[0].columns[0].id, audioType: 'recording', recordingId: '', ttsText: '', conditional: false, conditions: [] },
+            { id: genId(), type: 'display_data', name: 'השמעת פרטים', lookupColumn: DB.tables[0].columns[0].id, ttsText: '', conditional: false, conditions: [] },
             { id: genId(), type: 'display_data', name: 'סטטוס שנה שעברה', lookupColumn: DB.tables[0].columns[0].id, conditionColumn: DB.tables[0].columns[3].id, audioType: 'tts', ttsText: '', conditional: true, conditions: [
                 { value: 'כן', audioType: 'tts', ttsText: 'שנה שעברה השתתפת בטיול', audioFile: '' },
                 { value: 'לא', audioType: 'tts', ttsText: 'שנה שעברה לא השתתפת בטיול', audioFile: '' }
@@ -614,8 +614,8 @@ if (DB.tables.length === 0) {
         { id: genId(), name: 'פרטי תלמיד', type: 'text', content: 'שלום {שם תלמיד}, אתה בכיתה {כיתה}. ברוכים הבאים למערכת ההרשמה' },
         { id: genId(), name: 'סיום שיחה', type: 'file', content: 'goodbye.wav' }
     ];
-    // Link demo form step to demo recording
-    DB.forms[0].steps[1].recordingId = DB.recordings[1].id;
+    // Set demo template with bank blocks
+    DB.forms[0].steps[1].ttsText = '[[ברוך הבא למערכת]] שלום {שם תלמיד}, אתה בכיתה {כיתה}. [[סיום שיחה]]';
     saveDB();
 }
 
@@ -917,28 +917,22 @@ function renderStepCard(step, idx, form, table) {
     }
 
     if (step.type === 'display_data') {
-        // Lookup column first
-        html += '<div class="form-row">';
+        // Lookup column
+        html += '<div class="form-row full">';
         html += '<div class="form-group"><label>חפש לפי עמודה (מזהה המשתמש)</label><select onchange="updateStep(' + idx + ',\'lookupColumn\',this.value)">';
         html += '<option value="">-- בחר --</option>';
         cols.forEach(function(c) {
             html += '<option value="' + c.id + '"' + (step.lookupColumn === c.id ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
         });
-        html += '</select></div>';
-        html += '<div class="form-group"><label>סוג השמעה</label><select onchange="updateStep(' + idx + ',\'audioType\',this.value)">';
-        html += '<option value="tts"' + (step.audioType === 'tts' ? ' selected' : '') + '>הקראת טקסט (TTS)</option>';
-        html += '<option value="file"' + (step.audioType === 'file' ? ' selected' : '') + '>קובץ שמע</option>';
-        html += '<option value="recording"' + (step.audioType === 'recording' ? ' selected' : '') + '>בחירה מבנק הקלטות</option>';
         html += '</select></div></div>';
 
         // Conditional toggle
         html += '<div class="form-row full"><div class="form-group">';
-        html += '<label><input type="checkbox" ' + (step.conditional ? 'checked' : '') + ' onchange="toggleConditional(' + idx + ',this.checked)"> השמעה מותנית (הקלטה שונה לפי ערך בעמודה)</label>';
+        html += '<label><input type="checkbox" ' + (step.conditional ? 'checked' : '') + ' onchange="toggleConditional(' + idx + ',this.checked)"> השמעה מותנית (תוכן שונה לפי ערך בעמודה)</label>';
         html += '</div></div>';
 
         if (step.conditional) {
-            // Need to pick which column to check for conditions
-            html += '<div class="form-row"><div class="form-group"><label>בדוק ערך בעמודה</label><select onchange="updateStep(' + idx + ',\'conditionColumn\',this.value)">';
+            html += '<div class="form-row full"><div class="form-group"><label>בדוק ערך בעמודה</label><select onchange="updateStep(' + idx + ',\'conditionColumn\',this.value)">';
             html += '<option value="">-- בחר --</option>';
             cols.forEach(function(c) {
                 html += '<option value="' + c.id + '"' + (step.conditionColumn === c.id ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
@@ -946,51 +940,40 @@ function renderStepCard(step, idx, form, table) {
             html += '</select></div></div>';
         }
 
-        // Available columns chips
-        html += '<div style="margin-bottom:10px"><label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px">עמודות זמינות - לחץ להוספה לטקסט:</label>';
-        html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+        // Chips bar: columns (blue) + bank blocks (pink)
+        html += '<div style="margin-bottom:6px">';
+        html += '<label style="font-size:12px;font-weight:600;color:var(--primary);display:block;margin-bottom:4px">&#128204; ערכי עמודות - לחץ להוספה:</label>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">';
         cols.forEach(function(c) {
-            html += '<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer" ';
-            html += 'onclick="insertColRef(' + idx + ',\'{' + esc(c.name) + '}\')" title="לחץ להוספה">';
-            html += c.num + '. ' + esc(c.name) + '</span>';
+            html += '<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer" ';
+            html += 'onclick="insertColRef(' + idx + ',\'{' + esc(c.name) + '}\')" title="הכנס ערך עמודה">';
+            html += '{' + esc(c.name) + '}</span>';
         });
-        html += '</div></div>';
+        html += '</div>';
+
+        var recs = DB.recordings || [];
+        if (recs.length > 0) {
+            html += '<label style="font-size:12px;font-weight:600;color:var(--accent);display:block;margin-bottom:4px">&#127908; בלוקים מבנק הקלטות - לחץ להוספה:</label>';
+            html += '<div style="display:flex;flex-wrap:wrap;gap:5px">';
+            recs.forEach(function(rec) {
+                var icon = rec.type === 'text' ? '&#128172;' : '&#127908;';
+                html += '<span style="background:var(--accent);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer" ';
+                html += 'onclick="insertColRef(' + idx + ',\'[[' + esc(rec.name) + ']]\')" title="' + esc(rec.content || '') + '">';
+                html += icon + ' ' + esc(rec.name) + '</span>';
+            });
+            html += '</div>';
+        } else {
+            html += '<small style="color:var(--muted)">&#127908; אין בלוקים בבנק הקלטות. <a href="#" onclick="event.preventDefault();showPage(\'recordings\')" style="color:var(--accent)">צור בלוק חדש</a></small>';
+        }
+        html += '</div>';
 
         if (!step.conditional) {
-            if (step.audioType === 'tts') {
-                html += '<div class="form-row full"><div class="form-group"><label>טקסט להקראה</label>';
-                html += '<textarea id="tts_' + idx + '" rows="3" onchange="updateStep(' + idx + ',\'ttsText\',this.value)" placeholder="סך הילדים שמופיע אצלנו במערכת {סך ילדים} ילדים והכתובת שמופיע אצלנו הוא: {כתובת}">' + esc(step.ttsText || '') + '</textarea>';
-                html += '<small style="color:var(--muted)">השתמש ב-{שם עמודה} להכנסת ערכים מהטבלה. ניתן להכניס כמה עמודות שרוצים באותו טקסט.</small></div></div>';
-            } else if (step.audioType === 'file') {
-                html += '<div class="form-row full"><div class="form-group"><label>שם קובץ שמע</label>';
-                html += '<input type="text" value="' + esc(step.audioFile || '') + '" onchange="updateStep(' + idx + ',\'audioFile\',this.value)" placeholder="audio/welcome.wav"></div></div>';
-            } else if (step.audioType === 'recording') {
-                // Select from recording bank
-                html += '<div class="form-row full"><div class="form-group"><label>בחר הקלטה מהבנק</label>';
-                html += '<select onchange="updateStep(' + idx + ',\'recordingId\',this.value)">';
-                html += '<option value="">-- בחר הקלטה --</option>';
-                var recs = DB.recordings || [];
-                recs.forEach(function(rec) {
-                    var label = esc(rec.name) + ' (' + (rec.type === 'text' ? 'טקסט' : 'קובץ') + ')';
-                    html += '<option value="' + rec.id + '"' + (step.recordingId === rec.id ? ' selected' : '') + '>' + label + '</option>';
-                });
-                html += '</select>';
-                if (recs.length === 0) {
-                    html += '<small style="color:var(--danger)">אין הקלטות בבנק. עבור לתפריט "בנק הקלטות" כדי ליצור הקלטות.</small>';
-                } else {
-                    // Show preview of selected recording
-                    var selRec = step.recordingId ? recs.find(function(r) { return r.id === step.recordingId; }) : null;
-                    if (selRec) {
-                        html += '<div style="margin-top:8px;padding:10px;background:#f0f1f6;border-radius:8px;font-size:13px">';
-                        html += '<strong>' + (selRec.type === 'text' ? '&#128172; טקסט:' : '&#127908; קובץ:') + '</strong> ';
-                        html += esc(selRec.content);
-                        html += '</div>';
-                    }
-                }
-                html += '</div></div>';
-            }
+            // Single template text area
+            html += '<div class="form-row full"><div class="form-group"><label>תוכן השמעה</label>';
+            html += '<textarea id="tts_' + idx + '" rows="4" onchange="updateStep(' + idx + ',\'ttsText\',this.value)" placeholder="שלום [[ברוך הבא למערכת]] סך הילדים שמופיע אצלנו {סך ילדים} ילדים [[סיום שיחה]]">' + esc(step.ttsText || '') + '</textarea>';
+            html += '<small style="color:var(--muted)">כתוב טקסט חופשי, הכנס ערכי עמודות עם <strong style="color:var(--primary)">{שם עמודה}</strong> ובלוקים מהבנק עם <strong style="color:var(--accent)">[[שם בלוק]]</strong>. הכל מושמע ברצף.</small></div></div>';
         } else {
-            // Conditional rows
+            // Conditional rows - each row has a template text area
             html += '<div class="condition-list">';
             html += '<label style="font-size:13px;font-weight:600;margin-bottom:8px;display:block">תנאים:</label>';
             var conds = step.conditions || [];
@@ -998,23 +981,7 @@ function renderStepCard(step, idx, form, table) {
                 html += '<div class="condition-row" style="flex-wrap:wrap">';
                 html += '<span style="font-size:12px;white-space:nowrap">אם הערך =</span>';
                 html += '<input class="val-input" type="text" value="' + esc(cond.value) + '" onchange="updateCondition(' + idx + ',' + ci + ',\'value\',this.value)">';
-                html += '<select onchange="updateCondition(' + idx + ',' + ci + ',\'audioType\',this.value)" style="width:120px">';
-                html += '<option value="tts"' + (cond.audioType === 'tts' ? ' selected' : '') + '>TTS</option>';
-                html += '<option value="file"' + (cond.audioType === 'file' ? ' selected' : '') + '>קובץ</option>';
-                html += '<option value="recording"' + (cond.audioType === 'recording' ? ' selected' : '') + '>בנק</option>';
-                html += '</select>';
-                if (cond.audioType === 'tts') {
-                    html += '<input class="tts-input" type="text" value="' + esc(cond.ttsText || '') + '" onchange="updateCondition(' + idx + ',' + ci + ',\'ttsText\',this.value)" placeholder="טקסט עם {שם עמודה} לערכים">';
-                } else if (cond.audioType === 'file') {
-                    html += '<input class="tts-input" type="text" value="' + esc(cond.audioFile || '') + '" onchange="updateCondition(' + idx + ',' + ci + ',\'audioFile\',this.value)" placeholder="שם קובץ שמע">';
-                } else if (cond.audioType === 'recording') {
-                    html += '<select class="tts-input" onchange="updateCondition(' + idx + ',' + ci + ',\'recordingId\',this.value)">';
-                    html += '<option value="">-- בחר --</option>';
-                    (DB.recordings || []).forEach(function(rec) {
-                        html += '<option value="' + rec.id + '"' + (cond.recordingId === rec.id ? ' selected' : '') + '>' + esc(rec.name) + '</option>';
-                    });
-                    html += '</select>';
-                }
+                html += '<input class="tts-input" type="text" value="' + esc(cond.ttsText || '') + '" onchange="updateCondition(' + idx + ',' + ci + ',\'ttsText\',this.value)" placeholder="טקסט עם {עמודה} ובלוקים [[שם בלוק]]">';
                 html += '<button class="btn btn-icon btn-danger btn-sm" onclick="removeCondition(' + idx + ',' + ci + ')">&#10005;</button>';
                 html += '</div>';
             });
@@ -1088,12 +1055,8 @@ function addStep(type) {
         step.targetColumn = '';
     } else if (type === 'display_data') {
         step.name = 'השמעת נתון';
-        step.sourceColumn = '';
         step.lookupColumn = '';
-        step.audioType = 'tts';
         step.ttsText = '';
-        step.audioFile = '';
-        step.segments = [];
         step.conditional = false;
         step.conditions = [];
     } else if (type === 'collect_input') {
@@ -1149,7 +1112,7 @@ function updateStep(idx, key, val) {
     form.steps[idx][key] = val;
     saveDB();
     // Re-render if type-changing fields
-    if (key === 'audioType' || key === 'promptType' || key === 'inputType') editForm(editingFormId);
+    if (key === 'promptType' || key === 'inputType') editForm(editingFormId);
 }
 
 function updateFormName(val) {
