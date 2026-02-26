@@ -313,6 +313,25 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     word-break: break-word;
 }
 .rec-card .rec-actions { display: flex; gap: 8px; }
+.rec-value-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px;
+    background: #f8f9fc;
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+.rec-value-row input { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+.rec-value-row .val-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.rec-card .rec-values { margin-top: 8px; }
+.rec-card .rec-val-item {
+    display: flex; gap: 8px; align-items: center;
+    padding: 4px 8px; background: #f0f1f6; border-radius: 4px;
+    margin-bottom: 4px; font-size: 12px;
+}
+.rec-card .rec-val-item .val-name { font-weight: 600; min-width: 80px; }
+.rec-card .rec-val-item .val-file { color: var(--muted); }
 
 /* Condition rows */
 .condition-list { margin-top: 10px; }
@@ -506,31 +525,50 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     </div>
 </div>
 
-<!-- Recording Edit Modal -->
+<!-- Recording Edit Modal (Simple) -->
 <div class="modal-overlay" id="recModal">
     <div class="modal">
         <div class="modal-header">
-            <h3 id="recModalTitle">הקלטה חדשה</h3>
+            <h3 id="recModalTitle">בלוק חדש</h3>
             <button class="btn btn-icon btn-secondary" onclick="closeModal('recModal')">X</button>
         </div>
         <div class="modal-body">
             <div class="form-group" style="margin-bottom:14px">
-                <label>שם ההקלטה</label>
+                <label>שם הבלוק</label>
                 <input type="text" id="recName" placeholder="לדוגמא: ברוך הבא למערכת">
             </div>
             <div class="form-group" style="margin-bottom:14px">
-                <label>סוג</label>
-                <select id="recType" onchange="updateRecModalUI()">
-                    <option value="text">טקסט להקראה (TTS)</option>
-                    <option value="file">קובץ שמע</option>
+                <label>סוג בלוק</label>
+                <select id="recBlockType" onchange="updateRecModalUI()">
+                    <option value="simple">כותרת / הקלטה רגילה</option>
+                    <option value="column">לפי ערכי עמודה</option>
                 </select>
+                <small id="recBlockTypeHint" style="color:var(--muted)"></small>
             </div>
-            <div class="form-group" style="margin-bottom:8px">
-                <label id="recContentLabel">טקסט להקראה</label>
-                <textarea id="recContent" rows="4" placeholder="שלום {שם תלמיד}"></textarea>
-                <small id="recContentHint" style="color:var(--muted)"></small>
+            <div id="recSimpleFields">
+                <div class="form-group">
+                    <label>קובץ שמע</label>
+                    <input type="text" id="recAudioFile" placeholder="welcome.wav">
+                    <small style="color:var(--muted)">שם קובץ ההקלטה</small>
+                </div>
             </div>
-            <div id="recColChips" style="margin-top:6px"></div>
+            <div id="recColumnFields" style="display:none">
+                <div class="form-group" style="margin-bottom:14px">
+                    <label>עמודה מקושרת</label>
+                    <select id="recColumnName" onchange="updateRecColumnValues()">
+                        <option value="">-- בחר עמודה --</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:10px">
+                    <label>הקלטת כותרת (אופציונלי)</label>
+                    <input type="text" id="recLabelFile" placeholder="intro_address.wav">
+                    <small style="color:var(--muted)">הקלטה שמושמעת לפני הערך, למשל: "הכתובת שלכם היא"</small>
+                </div>
+                <div id="recValuesList">
+                    <label style="font-size:13px;font-weight:600;margin-bottom:8px;display:block">הקלטות לפי ערך:</label>
+                </div>
+                <button class="btn btn-sm btn-secondary" onclick="addRecValue()" style="margin-top:8px">+ ערך חדש</button>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('recModal')">ביטול</button>
@@ -610,12 +648,16 @@ if (DB.tables.length === 0) {
     });
     // Demo recordings
     DB.recordings = [
-        { id: genId(), name: 'ברוך הבא למערכת', type: 'file', content: 'welcome_intro.wav' },
-        { id: genId(), name: 'פרטי תלמיד', type: 'text', content: 'שלום {שם תלמיד}, אתה בכיתה {כיתה}. ברוכים הבאים למערכת ההרשמה' },
-        { id: genId(), name: 'סיום שיחה', type: 'file', content: 'goodbye.wav' }
+        { id: genId(), name: 'ברוך הבא למערכת', blockType: 'simple', audioFile: 'welcome_intro.wav' },
+        { id: genId(), name: 'סיום שיחה', blockType: 'simple', audioFile: 'goodbye.wav' },
+        { id: genId(), name: 'כיתת הלימוד', blockType: 'column', columnName: 'כיתה', labelFile: 'your_class_is.wav', values: [
+            { value: 'א', audioFile: 'class_a.wav' },
+            { value: 'ב', audioFile: 'class_b.wav' },
+            { value: 'ג', audioFile: 'class_c.wav' }
+        ]}
     ];
     // Set demo template with bank blocks
-    DB.forms[0].steps[1].ttsText = '[[ברוך הבא למערכת]] שלום {שם תלמיד}, אתה בכיתה {כיתה}. [[סיום שיחה]]';
+    DB.forms[0].steps[1].ttsText = '[[ברוך הבא למערכת]] שלום {שם תלמיד}, אתם לומדים ב[[כיתת הלימוד]]. [[סיום שיחה]]';
     saveDB();
 }
 
@@ -956,9 +998,10 @@ function renderStepCard(step, idx, form, table) {
             html += '<label style="font-size:12px;font-weight:600;color:var(--accent);display:block;margin-bottom:4px">&#127908; בלוקים מבנק הקלטות - לחץ להוספה:</label>';
             html += '<div style="display:flex;flex-wrap:wrap;gap:5px">';
             recs.forEach(function(rec) {
-                var icon = rec.type === 'text' ? '&#128172;' : '&#127908;';
+                var icon = rec.blockType === 'column' ? '&#128203;' : '&#127908;';
+                var tooltip = rec.blockType === 'column' ? 'עמודה: ' + (rec.columnName || '') : (rec.audioFile || '');
                 html += '<span style="background:var(--accent);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer" ';
-                html += 'onclick="insertColRef(' + idx + ',\'[[' + esc(rec.name) + ']]\')" title="' + esc(rec.content || '') + '">';
+                html += 'onclick="insertColRef(' + idx + ',\'[[' + esc(rec.name) + ']]\')" title="' + esc(tooltip) + '">';
                 html += icon + ' ' + esc(rec.name) + '</span>';
             });
             html += '</div>';
@@ -1207,26 +1250,44 @@ function updateOption(stepIdx, optIdx, key, val) {
 }
 
 // ============ RECORDING BANK ============
+var tempRecValues = [];
+
 function renderRecordingsPage() {
     document.getElementById('pageTitle').textContent = 'בנק הקלטות';
-    document.getElementById('topActions').innerHTML = '<button class="btn btn-primary" onclick="createRecording()">+ הקלטה חדשה</button>';
+    document.getElementById('topActions').innerHTML = '<button class="btn btn-primary" onclick="createRecording()">+ בלוק חדש</button>';
 
     if (!DB.recordings) DB.recordings = [];
 
     if (DB.recordings.length === 0) {
-        document.getElementById('content').innerHTML = '<div class="empty-state"><div class="icon">&#127908;</div><p>אין הקלטות עדיין</p><button class="btn btn-primary" onclick="createRecording()">+ צור הקלטה ראשונה</button></div>';
+        document.getElementById('content').innerHTML = '<div class="empty-state"><div class="icon">&#127908;</div><p>אין בלוקים עדיין</p><button class="btn btn-primary" onclick="createRecording()">+ צור בלוק ראשון</button></div>';
         return;
     }
 
     var html = '<div class="item-grid">';
     DB.recordings.forEach(function(rec) {
-        html += '<div class="rec-card ' + (rec.type === 'text' ? 'text-rec' : 'file-rec') + '">';
+        var isColumn = rec.blockType === 'column';
+        html += '<div class="rec-card ' + (isColumn ? 'file-rec' : 'text-rec') + '">';
         html += '<div class="rec-header">';
-        html += '<div class="rec-icon ' + (rec.type === 'text' ? 'text-icon' : 'file-icon') + '">' + (rec.type === 'text' ? '&#128172;' : '&#127908;') + '</div>';
+        html += '<div class="rec-icon ' + (isColumn ? 'file-icon' : 'text-icon') + '">' + (isColumn ? '&#128203;' : '&#127908;') + '</div>';
         html += '<div class="rec-name">' + esc(rec.name) + '</div>';
-        html += '<span class="step-type-badge ' + (rec.type === 'text' ? 'display' : 'playback') + '">' + (rec.type === 'text' ? 'טקסט TTS' : 'קובץ שמע') + '</span>';
+        html += '<span class="step-type-badge ' + (isColumn ? 'playback' : 'display') + '">' + (isColumn ? 'לפי עמודה' : 'כותרת') + '</span>';
         html += '</div>';
-        html += '<div class="rec-content">' + esc(rec.content || '(ריק)') + '</div>';
+
+        if (isColumn) {
+            html += '<div class="rec-content">עמודה: <strong>' + esc(rec.columnName || '') + '</strong>';
+            if (rec.labelFile) html += '<br>כותרת: ' + esc(rec.labelFile);
+            html += '</div>';
+            if (rec.values && rec.values.length > 0) {
+                html += '<div class="rec-values">';
+                rec.values.forEach(function(v) {
+                    html += '<div class="rec-val-item"><span class="val-name">' + esc(v.value) + '</span><span class="val-file">&#127908; ' + esc(v.audioFile) + '</span></div>';
+                });
+                html += '</div>';
+            }
+        } else {
+            html += '<div class="rec-content">&#127908; ' + esc(rec.audioFile || '(ריק)') + '</div>';
+        }
+
         html += '<div class="rec-actions">';
         html += '<button class="btn btn-sm btn-primary" onclick="editRecording(\'' + rec.id + '\')">עריכה</button>';
         html += '<button class="btn btn-sm btn-danger" onclick="deleteRecording(\'' + rec.id + '\')">מחיקה</button>';
@@ -1238,10 +1299,13 @@ function renderRecordingsPage() {
 
 function createRecording() {
     editingRecId = null;
-    document.getElementById('recModalTitle').textContent = 'הקלטה חדשה';
+    document.getElementById('recModalTitle').textContent = 'בלוק חדש';
     document.getElementById('recName').value = '';
-    document.getElementById('recType').value = 'text';
-    document.getElementById('recContent').value = '';
+    document.getElementById('recBlockType').value = 'simple';
+    document.getElementById('recAudioFile').value = '';
+    document.getElementById('recLabelFile').value = '';
+    tempRecValues = [];
+    populateRecColumnSelect();
     updateRecModalUI();
     openModal('recModal');
 }
@@ -1250,75 +1314,105 @@ function editRecording(id) {
     var rec = (DB.recordings || []).find(function(r) { return r.id === id; });
     if (!rec) return;
     editingRecId = id;
-    document.getElementById('recModalTitle').textContent = 'עריכת הקלטה';
+    document.getElementById('recModalTitle').textContent = 'עריכת בלוק';
     document.getElementById('recName').value = rec.name;
-    document.getElementById('recType').value = rec.type;
-    document.getElementById('recContent').value = rec.content || '';
+    document.getElementById('recBlockType').value = rec.blockType || 'simple';
+    document.getElementById('recAudioFile').value = rec.audioFile || '';
+    document.getElementById('recLabelFile').value = rec.labelFile || '';
+    tempRecValues = (rec.values || []).map(function(v) { return { value: v.value, audioFile: v.audioFile }; });
+    populateRecColumnSelect();
+    if (rec.columnName) document.getElementById('recColumnName').value = rec.columnName;
     updateRecModalUI();
     openModal('recModal');
 }
 
-function updateRecModalUI() {
-    var type = document.getElementById('recType').value;
-    var label = document.getElementById('recContentLabel');
-    var input = document.getElementById('recContent');
-    var hint = document.getElementById('recContentHint');
-    var colChips = document.getElementById('recColChips');
-
-    if (type === 'text') {
-        label.textContent = 'טקסט להקראה';
-        input.placeholder = 'שלום {שם תלמיד}, סך הילדים במערכת {סך ילדים} ילדים';
-        hint.textContent = 'ניתן להשתמש ב-{שם עמודה} להכנסת ערכים מהטבלה. שמות העמודות יתאימו לטבלה המקושרת לטופס.';
-        colChips.style.display = 'block';
-        // Populate column chips from all tables
-        var chipsHtml = '';
-        DB.tables.forEach(function(t) {
-            chipsHtml += '<div style="margin-bottom:4px"><small style="color:var(--muted)">' + esc(t.name) + ':</small> ';
-            t.columns.forEach(function(c) {
-                chipsHtml += '<span style="background:var(--primary);color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin:2px" ';
-                chipsHtml += 'onclick="insertRecColRef(\'{' + esc(c.name) + '}\')">';
-                chipsHtml += esc(c.name) + '</span>';
-            });
-            chipsHtml += '</div>';
+function populateRecColumnSelect() {
+    var sel = document.getElementById('recColumnName');
+    var html = '<option value="">-- בחר עמודה --</option>';
+    DB.tables.forEach(function(t) {
+        t.columns.forEach(function(c) {
+            html += '<option value="' + esc(c.name) + '">' + esc(t.name) + ' &rarr; ' + c.num + '. ' + esc(c.name) + '</option>';
         });
-        colChips.innerHTML = chipsHtml;
+    });
+    sel.innerHTML = html;
+}
+
+function updateRecModalUI() {
+    var blockType = document.getElementById('recBlockType').value;
+    var hint = document.getElementById('recBlockTypeHint');
+    document.getElementById('recSimpleFields').style.display = blockType === 'simple' ? 'block' : 'none';
+    document.getElementById('recColumnFields').style.display = blockType === 'column' ? 'block' : 'none';
+
+    if (blockType === 'simple') {
+        hint.textContent = 'הקלטה בודדת - כותרת, פתיחה, סגירה וכו\'';
     } else {
-        label.textContent = 'שם קובץ שמע';
-        input.placeholder = 'welcome.wav';
-        hint.textContent = 'שם הקובץ או הנתיב לקובץ ההקלטה.';
-        colChips.style.display = 'none';
+        hint.textContent = 'הקלטה שונה לכל ערך בעמודה. למשל: לכל בית ספר הקלטה אחרת.';
+        renderRecValuesList();
     }
 }
 
-function insertRecColRef(ref) {
-    var textarea = document.getElementById('recContent');
-    if (textarea) {
-        var pos = textarea.selectionStart || textarea.value.length;
-        var val = textarea.value;
-        textarea.value = val.substring(0, pos) + ref + val.substring(pos);
-        textarea.focus();
-        var newPos = pos + ref.length;
-        textarea.setSelectionRange(newPos, newPos);
+function renderRecValuesList() {
+    var container = document.getElementById('recValuesList');
+    var html = '<label style="font-size:13px;font-weight:600;margin-bottom:8px;display:block">הקלטות לפי ערך:</label>';
+    if (tempRecValues.length === 0) {
+        html += '<div style="color:var(--muted);font-size:12px;padding:8px">אין ערכים עדיין. הוסף ערך חדש.</div>';
     }
+    tempRecValues.forEach(function(v, i) {
+        html += '<div class="rec-value-row">';
+        html += '<span class="val-label">ערך:</span>';
+        html += '<input type="text" value="' + esc(v.value) + '" onchange="tempRecValues[' + i + '].value=this.value" placeholder="בית שלמה">';
+        html += '<span class="val-label">קובץ:</span>';
+        html += '<input type="text" value="' + esc(v.audioFile) + '" onchange="tempRecValues[' + i + '].audioFile=this.value" placeholder="school_shlomo.wav">';
+        html += '<button class="btn btn-icon btn-danger btn-sm" onclick="removeRecValue(' + i + ')">&#10005;</button>';
+        html += '</div>';
+    });
+    container.innerHTML = html;
+}
+
+function addRecValue() {
+    tempRecValues.push({ value: '', audioFile: '' });
+    renderRecValuesList();
+}
+
+function removeRecValue(idx) {
+    tempRecValues.splice(idx, 1);
+    renderRecValuesList();
+}
+
+function updateRecColumnValues() {
+    // Could auto-populate values from table data in the future
 }
 
 function saveRecording() {
     var name = document.getElementById('recName').value.trim();
-    var type = document.getElementById('recType').value;
-    var content = document.getElementById('recContent').value.trim();
+    var blockType = document.getElementById('recBlockType').value;
     if (!name) { alert('נא להזין שם'); return; }
 
     if (!DB.recordings) DB.recordings = [];
 
+    var recData;
+    if (blockType === 'simple') {
+        recData = {
+            name: name,
+            blockType: 'simple',
+            audioFile: document.getElementById('recAudioFile').value.trim()
+        };
+    } else {
+        recData = {
+            name: name,
+            blockType: 'column',
+            columnName: document.getElementById('recColumnName').value,
+            labelFile: document.getElementById('recLabelFile').value.trim(),
+            values: tempRecValues.filter(function(v) { return v.value.trim(); })
+        };
+    }
+
     if (editingRecId) {
         var rec = DB.recordings.find(function(r) { return r.id === editingRecId; });
-        if (rec) {
-            rec.name = name;
-            rec.type = type;
-            rec.content = content;
-        }
+        if (rec) Object.assign(rec, recData);
     } else {
-        DB.recordings.push({ id: genId(), name: name, type: type, content: content });
+        recData.id = genId();
+        DB.recordings.push(recData);
     }
 
     saveDB();
@@ -1327,7 +1421,7 @@ function saveRecording() {
 }
 
 function deleteRecording(id) {
-    if (!confirm('למחוק את ההקלטה?')) return;
+    if (!confirm('למחוק את הבלוק?')) return;
     DB.recordings = (DB.recordings || []).filter(function(r) { return r.id !== id; });
     saveDB();
     renderRecordingsPage();
