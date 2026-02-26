@@ -275,6 +275,55 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 .step-body .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .step-body .form-row.full { grid-template-columns: 1fr; }
 
+/* Segment builder */
+.segment-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.segment-item {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 12px;
+    background: #f8f9fc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    position: relative;
+}
+.segment-item.text-seg { border-right: 3px solid var(--primary); }
+.segment-item.file-seg { border-right: 3px solid var(--accent); }
+.segment-type-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    color: #fff;
+}
+.segment-type-icon.text-icon { background: var(--primary); }
+.segment-type-icon.file-icon { background: var(--accent); }
+.segment-content { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.segment-content textarea, .segment-content input {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    width: 100%;
+}
+.segment-content textarea:focus, .segment-content input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #fff;
+}
+.segment-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.add-segment-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
 /* Condition rows */
 .condition-list { margin-top: 10px; }
 .condition-row {
@@ -514,9 +563,14 @@ if (DB.tables.length === 0) {
         id: genId(),
         name: 'הרשמה לטיול שנתי',
         tableId: DB.tables[0].id,
+        audioPath: '/var/lib/asterisk/sounds/custom/',
         steps: [
             { id: genId(), type: 'auto_capture', name: 'זיהוי מתקשר', systemField: 'phone', targetColumn: DB.tables[0].columns[0].id },
-            { id: genId(), type: 'display_data', name: 'השמעת פרטים', lookupColumn: DB.tables[0].columns[0].id, audioType: 'tts', ttsText: 'שלום {שם תלמיד}, אתה בכיתה {כיתה}. ברוכים הבאים למערכת ההרשמה', conditional: false, conditions: [] },
+            { id: genId(), type: 'display_data', name: 'השמעת פרטים', lookupColumn: DB.tables[0].columns[0].id, audioType: 'tts_columns', ttsText: '', segments: [
+                { type: 'file', content: 'welcome_intro.wav' },
+                { type: 'text', content: 'שלום {שם תלמיד}, אתה בכיתה {כיתה}' },
+                { type: 'file', content: 'registration_system.wav' }
+            ], conditional: false, conditions: [] },
             { id: genId(), type: 'display_data', name: 'סטטוס שנה שעברה', lookupColumn: DB.tables[0].columns[0].id, conditionColumn: DB.tables[0].columns[3].id, audioType: 'tts', ttsText: '', conditional: true, conditions: [
                 { value: 'כן', audioType: 'tts', ttsText: 'שנה שעברה השתתפת בטיול', audioFile: '' },
                 { value: 'לא', audioType: 'tts', ttsText: 'שנה שעברה לא השתתפת בטיול', audioFile: '' }
@@ -760,7 +814,11 @@ function editForm(id) {
         html += '<option value="' + t.id + '"' + (form.tableId === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>';
     });
     html += '</select></div>';
-    html += '</div></div></div>';
+    html += '</div>';
+    html += '<div class="form-group" style="margin-top:12px"><label>&#128193; תיקיית הקלטות</label>';
+    html += '<input type="text" value="' + esc(form.audioPath || '') + '" onchange="updateFormAudioPath(this.value)" placeholder="לדוגמא: /var/lib/asterisk/sounds/custom/ או C:\\recordings\\">';
+    html += '<small style="color:var(--muted)">נתיב התיקייה שבה מאוחסנות הקלטות השמע. קבצי ההקלטה בבלוקים יהיו יחסיים לתיקייה זו.</small></div>';
+    html += '</div></div>';
 
     // Steps
     html += '<div class="card"><div class="card-header"><h3>שלבים (' + form.steps.length + ')</h3>';
@@ -832,6 +890,7 @@ function renderStepCard(step, idx, form, table) {
         html += '<div class="form-group"><label>סוג השמעה</label><select onchange="updateStep(' + idx + ',\'audioType\',this.value)">';
         html += '<option value="tts"' + (step.audioType === 'tts' ? ' selected' : '') + '>הקראת טקסט (TTS)</option>';
         html += '<option value="file"' + (step.audioType === 'file' ? ' selected' : '') + '>קובץ שמע</option>';
+        html += '<option value="tts_columns"' + (step.audioType === 'tts_columns' ? ' selected' : '') + '>הקראת טקסט מעמודות (משולב)</option>';
         html += '</select></div></div>';
 
         // Conditional toggle
@@ -864,9 +923,12 @@ function renderStepCard(step, idx, form, table) {
                 html += '<div class="form-row full"><div class="form-group"><label>טקסט להקראה</label>';
                 html += '<textarea id="tts_' + idx + '" rows="3" onchange="updateStep(' + idx + ',\'ttsText\',this.value)" placeholder="סך הילדים שמופיע אצלנו במערכת {סך ילדים} ילדים והכתובת שמופיע אצלנו הוא: {כתובת}">' + esc(step.ttsText || '') + '</textarea>';
                 html += '<small style="color:var(--muted)">השתמש ב-{שם עמודה} להכנסת ערכים מהטבלה. ניתן להכניס כמה עמודות שרוצים באותו טקסט.</small></div></div>';
-            } else {
+            } else if (step.audioType === 'file') {
                 html += '<div class="form-row full"><div class="form-group"><label>שם קובץ שמע</label>';
                 html += '<input type="text" value="' + esc(step.audioFile || '') + '" onchange="updateStep(' + idx + ',\'audioFile\',this.value)" placeholder="audio/welcome.wav"></div></div>';
+            } else if (step.audioType === 'tts_columns') {
+                // Segment builder - mix of text and audio file segments
+                html += renderSegmentBuilder(step, idx, cols);
             }
         } else {
             // Conditional rows
@@ -877,14 +939,17 @@ function renderStepCard(step, idx, form, table) {
                 html += '<div class="condition-row" style="flex-wrap:wrap">';
                 html += '<span style="font-size:12px;white-space:nowrap">אם הערך =</span>';
                 html += '<input class="val-input" type="text" value="' + esc(cond.value) + '" onchange="updateCondition(' + idx + ',' + ci + ',\'value\',this.value)">';
-                html += '<select onchange="updateCondition(' + idx + ',' + ci + ',\'audioType\',this.value)" style="width:100px">';
+                html += '<select onchange="updateCondition(' + idx + ',' + ci + ',\'audioType\',this.value)" style="width:120px">';
                 html += '<option value="tts"' + (cond.audioType === 'tts' ? ' selected' : '') + '>TTS</option>';
                 html += '<option value="file"' + (cond.audioType === 'file' ? ' selected' : '') + '>קובץ</option>';
+                html += '<option value="tts_columns"' + (cond.audioType === 'tts_columns' ? ' selected' : '') + '>משולב</option>';
                 html += '</select>';
                 if (cond.audioType === 'tts') {
                     html += '<input class="tts-input" type="text" value="' + esc(cond.ttsText || '') + '" onchange="updateCondition(' + idx + ',' + ci + ',\'ttsText\',this.value)" placeholder="טקסט עם {שם עמודה} לערכים">';
-                } else {
+                } else if (cond.audioType === 'file') {
                     html += '<input class="tts-input" type="text" value="' + esc(cond.audioFile || '') + '" onchange="updateCondition(' + idx + ',' + ci + ',\'audioFile\',this.value)" placeholder="שם קובץ שמע">';
+                } else if (cond.audioType === 'tts_columns') {
+                    html += '<input class="tts-input" type="text" value="' + esc(cond.ttsText || '') + '" onchange="updateCondition(' + idx + ',' + ci + ',\'ttsText\',this.value)" placeholder="טקסט עם {שם עמודה} וקבצים">';
                 }
                 html += '<button class="btn btn-icon btn-danger btn-sm" onclick="removeCondition(' + idx + ',' + ci + ')">&#10005;</button>';
                 html += '</div>';
@@ -964,6 +1029,7 @@ function addStep(type) {
         step.audioType = 'tts';
         step.ttsText = '';
         step.audioFile = '';
+        step.segments = [];
         step.conditional = false;
         step.conditions = [];
     } else if (type === 'collect_input') {
@@ -1033,6 +1099,13 @@ function updateFormTable(val) {
     form.tableId = val;
     saveDB();
     editForm(editingFormId);
+}
+
+function updateFormAudioPath(val) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.audioPath = val;
+    saveDB();
 }
 
 function insertColRef(stepIdx, ref) {
@@ -1108,6 +1181,127 @@ function updateOption(stepIdx, optIdx, key, val) {
     if (!form) return;
     form.steps[stepIdx].options[optIdx][key] = val;
     saveDB();
+}
+
+// ============ SEGMENT BUILDER ============
+function renderSegmentBuilder(step, idx, cols) {
+    // Ensure segments array exists
+    if (!step.segments) step.segments = [];
+
+    var html = '<div class="form-row full"><div class="form-group">';
+    html += '<label>תוכן השמעה משולב (טקסט + הקלטות)</label>';
+    html += '<small style="color:var(--muted);display:block;margin-bottom:8px">בנה את ההשמעה מבלוקים - כל בלוק יכול להיות טקסט להקראה או קובץ הקלטה. הבלוקים מושמעים ברצף.</small>';
+
+    html += '<div class="segment-list" id="segments_' + idx + '">';
+
+    if (step.segments.length === 0) {
+        html += '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">אין בלוקים עדיין. הוסף בלוק טקסט או הקלטה.</div>';
+    }
+
+    step.segments.forEach(function(seg, si) {
+        html += '<div class="segment-item ' + (seg.type === 'text' ? 'text-seg' : 'file-seg') + '">';
+
+        // Type icon
+        if (seg.type === 'text') {
+            html += '<div class="segment-type-icon text-icon" title="טקסט להקראה">&#128172;</div>';
+        } else {
+            html += '<div class="segment-type-icon file-icon" title="קובץ הקלטה">&#127908;</div>';
+        }
+
+        html += '<div class="segment-content">';
+        html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">';
+        html += '<span style="font-size:11px;font-weight:600;color:' + (seg.type === 'text' ? 'var(--primary)' : 'var(--accent)') + '">';
+        html += (seg.type === 'text' ? 'טקסט להקראה (TTS)' : 'קובץ הקלטה') + '</span>';
+        html += '<span style="font-size:10px;color:var(--muted)">בלוק ' + (si + 1) + '</span>';
+        html += '</div>';
+
+        if (seg.type === 'text') {
+            html += '<textarea id="seg_' + idx + '_' + si + '" rows="2" onchange="updateSegment(' + idx + ',' + si + ',\'content\',this.value)" placeholder="סך הילדים שמופיע אצלנו במערכת {סך ילדים} ילדים">' + esc(seg.content || '') + '</textarea>';
+            // Column chips for this segment
+            html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+            cols.forEach(function(c) {
+                html += '<span style="background:var(--primary);color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer" ';
+                html += 'onclick="insertSegColRef(' + idx + ',' + si + ',\'{' + esc(c.name) + '}\')" title="הכנס">';
+                html += esc(c.name) + '</span>';
+            });
+            html += '</div>';
+        } else {
+            html += '<input type="text" value="' + esc(seg.content || '') + '" onchange="updateSegment(' + idx + ',' + si + ',\'content\',this.value)" placeholder="audio/total_children_intro.wav">';
+            html += '<small style="color:var(--muted);font-size:11px">נתיב קובץ ההקלטה (יחסי לתיקיית ההקלטות)</small>';
+        }
+
+        html += '</div>';
+
+        // Actions
+        html += '<div class="segment-actions">';
+        if (si > 0) html += '<button class="btn btn-icon btn-secondary btn-sm" onclick="moveSegment(' + idx + ',' + si + ',-1)" title="הזז למעלה" style="width:24px;height:24px;font-size:10px">&#9650;</button>';
+        if (si < step.segments.length - 1) html += '<button class="btn btn-icon btn-secondary btn-sm" onclick="moveSegment(' + idx + ',' + si + ',1)" title="הזז למטה" style="width:24px;height:24px;font-size:10px">&#9660;</button>';
+        html += '<button class="btn btn-icon btn-danger btn-sm" onclick="removeSegment(' + idx + ',' + si + ')" title="מחק" style="width:24px;height:24px;font-size:10px">&#10005;</button>';
+        html += '</div>';
+
+        html += '</div>';
+    });
+
+    html += '</div>';
+
+    // Add segment buttons
+    html += '<div class="add-segment-bar">';
+    html += '<button class="btn btn-sm btn-primary" onclick="addSegment(' + idx + ',\'text\')">+ בלוק טקסט</button>';
+    html += '<button class="btn btn-sm" style="background:var(--accent);color:#fff" onclick="addSegment(' + idx + ',\'file\')">+ בלוק הקלטה</button>';
+    html += '</div>';
+
+    html += '</div></div>';
+    return html;
+}
+
+function addSegment(stepIdx, type) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    if (!form.steps[stepIdx].segments) form.steps[stepIdx].segments = [];
+    form.steps[stepIdx].segments.push({ type: type, content: '' });
+    saveDB();
+    editForm(editingFormId);
+}
+
+function removeSegment(stepIdx, segIdx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[stepIdx].segments.splice(segIdx, 1);
+    saveDB();
+    editForm(editingFormId);
+}
+
+function moveSegment(stepIdx, segIdx, dir) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var segs = form.steps[stepIdx].segments;
+    var newIdx = segIdx + dir;
+    if (newIdx < 0 || newIdx >= segs.length) return;
+    var tmp = segs[segIdx];
+    segs[segIdx] = segs[newIdx];
+    segs[newIdx] = tmp;
+    saveDB();
+    editForm(editingFormId);
+}
+
+function updateSegment(stepIdx, segIdx, key, val) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[stepIdx].segments[segIdx][key] = val;
+    saveDB();
+}
+
+function insertSegColRef(stepIdx, segIdx, ref) {
+    var textarea = document.getElementById('seg_' + stepIdx + '_' + segIdx);
+    if (textarea) {
+        var pos = textarea.selectionStart || textarea.value.length;
+        var val = textarea.value;
+        textarea.value = val.substring(0, pos) + ref + val.substring(pos);
+        textarea.focus();
+        var newPos = pos + ref.length;
+        textarea.setSelectionRange(newPos, newPos);
+        updateSegment(stepIdx, segIdx, 'content', textarea.value);
+    }
 }
 
 // ============ HELPERS ============
