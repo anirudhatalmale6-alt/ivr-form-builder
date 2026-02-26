@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IVR Form Builder</title>
+<style>
+:root {
+    --primary: #4361ee;
+    --primary-dark: #3a0ca3;
+    --accent: #f72585;
+    --success: #06d6a0;
+    --warning: #ffd166;
+    --danger: #ef476f;
+    --bg: #f0f1f6;
+    --card: #ffffff;
+    --text: #2b2d42;
+    --muted: #8d99ae;
+    --border: #e0e3eb;
+    --sidebar-bg: #1a1a2e;
+    --sidebar-text: #c9d1d9;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
+
+/* Sidebar */
+.sidebar {
+    width: 220px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+.sidebar-brand {
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-brand h2 { color: #fff; font-size: 18px; }
+.sidebar-brand small { color: var(--muted); font-size: 11px; }
+.sidebar-nav { flex: 1; padding: 12px 0; }
+.nav-item {
+    padding: 12px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    transition: background 0.2s;
+    border-right: 3px solid transparent;
+}
+.nav-item:hover { background: rgba(255,255,255,0.05); }
+.nav-item.active { background: rgba(67,97,238,0.15); border-right-color: var(--primary); color: #fff; }
+.nav-icon { font-size: 18px; width: 24px; text-align: center; }
+
+/* Main area */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.topbar {
+    background: var(--card);
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.topbar h1 { font-size: 20px; }
+.content { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* Buttons */
+.btn {
+    padding: 9px 18px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-secondary { background: #e0e3eb; color: var(--text); }
+.btn-secondary:hover { background: #d0d4dd; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-icon {
+    width: 32px; height: 32px;
+    padding: 0; display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; font-size: 16px;
+}
+
+/* Cards */
+.card {
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+.card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.card-header h3 { font-size: 16px; }
+.card-body { padding: 20px; }
+
+/* Grid for table list / form list */
+.item-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+.item-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.item-card:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(67,97,238,0.12); }
+.item-card h4 { font-size: 15px; margin-bottom: 8px; }
+.item-card .meta { font-size: 12px; color: var(--muted); }
+.item-card .meta span { margin-left: 12px; }
+.item-card .actions { margin-top: 12px; display: flex; gap: 8px; }
+
+/* Visual Table Editor */
+.table-workspace {
+    background: #f8f9fc;
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    min-height: 300px;
+    padding: 20px;
+    position: relative;
+}
+.visual-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.visual-table th {
+    background: var(--primary);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    position: relative;
+    min-width: 140px;
+}
+.visual-table th .col-num {
+    font-size: 10px;
+    opacity: 0.7;
+    display: block;
+    margin-top: 2px;
+}
+.visual-table th .col-type {
+    font-size: 10px;
+    background: rgba(255,255,255,0.2);
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-top: 4px;
+    display: inline-block;
+}
+.visual-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+}
+.visual-table tr:last-child td { border-bottom: none; }
+.visual-table .add-col-cell {
+    background: #f0f1f6;
+    cursor: pointer;
+    transition: background 0.2s;
+    min-width: 50px;
+}
+.visual-table .add-col-cell:hover { background: #e0e3eb; }
+.col-actions {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    display: flex;
+    gap: 2px;
+}
+.col-actions button {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: #fff;
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+}
+.col-actions button:hover { background: rgba(255,255,255,0.4); }
+
+/* Form builder */
+.form-builder { display: flex; flex-direction: column; gap: 16px; }
+.form-info { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 13px; font-weight: 600; color: var(--text); }
+.form-group input, .form-group select, .form-group textarea {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #f8f9fc;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #fff;
+}
+
+/* Step cards */
+.step-list { display: flex; flex-direction: column; gap: 12px; }
+.step-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+.step-card:hover { border-color: var(--primary); }
+.step-header {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+.step-num {
+    width: 32px; height: 32px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+.step-num.auto { background: #6c757d; }
+.step-num.display { background: #0d6efd; }
+.step-num.input { background: var(--success); }
+.step-num.playback { background: var(--accent); }
+.step-title { flex: 1; font-size: 14px; font-weight: 600; }
+.step-type-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+.step-type-badge.auto { background: #e9ecef; color: #6c757d; }
+.step-type-badge.display { background: #e7f1ff; color: #0d6efd; }
+.step-type-badge.input { background: #d1f2eb; color: #06d6a0; }
+.step-type-badge.playback { background: #fce4ec; color: var(--accent); }
+.step-actions { display: flex; gap: 4px; }
+.step-body { padding: 0 16px 16px; display: none; }
+.step-card.open .step-body { display: block; }
+.step-body .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.step-body .form-row.full { grid-template-columns: 1fr; }
+
+/* Condition rows */
+.condition-list { margin-top: 10px; }
+.condition-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 10px;
+    background: #f8f9fc;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+.condition-row input, .condition-row select {
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+}
+.condition-row .val-input { width: 100px; }
+.condition-row .tts-input { flex: 1; }
+
+/* Options (DTMF) */
+.option-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px;
+    background: #f8f9fc;
+    border-radius: 8px;
+    margin-bottom: 6px;
+}
+.option-key {
+    width: 36px; height: 36px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+.option-row input { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+}
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { margin-bottom: 20px; }
+
+/* Modal */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+    background: #fff;
+    border-radius: 14px;
+    width: 500px;
+    max-width: 90vw;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.modal-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.modal-header h3 { font-size: 16px; }
+.modal-body { padding: 20px; }
+.modal-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .sidebar { width: 60px; }
+    .sidebar-brand h2, .sidebar-brand small, .nav-item span:not(.nav-icon) { display: none; }
+    .nav-item { justify-content: center; padding: 14px; }
+    .form-info, .step-body .form-row { grid-template-columns: 1fr; }
+    .item-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-brand">
+        <h2>IVR Builder</h2>
+        <small>Form Management</small>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-item active" onclick="showPage('tables')">
+            <span class="nav-icon">&#9783;</span>
+            <span>טבלאות</span>
+        </div>
+        <div class="nav-item" onclick="showPage('forms')">
+            <span class="nav-icon">&#9998;</span>
+            <span>טפסים</span>
+        </div>
+    </nav>
+</div>
+
+<div class="main">
+    <div class="topbar">
+        <h1 id="pageTitle">טבלאות</h1>
+        <div id="topActions"></div>
+    </div>
+    <div class="content" id="content"></div>
+</div>
+
+<!-- Column Edit Modal -->
+<div class="modal-overlay" id="colModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="colModalTitle">עמודה חדשה</h3>
+            <button class="btn btn-icon btn-secondary" onclick="closeModal('colModal')">X</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group" style="margin-bottom:14px">
+                <label>שם העמודה</label>
+                <input type="text" id="colName" placeholder="לדוגמא: שם תלמיד">
+            </div>
+            <div class="form-group">
+                <label>סוג עמודה</label>
+                <select id="colType">
+                    <option value="text">טקסט</option>
+                    <option value="number">מספר</option>
+                    <option value="date">תאריך</option>
+                    <option value="time">שעה</option>
+                    <option value="datetime">תאריך ושעה</option>
+                    <option value="phone">טלפון</option>
+                    <option value="boolean">כן/לא</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('colModal')">ביטול</button>
+            <button class="btn btn-primary" onclick="saveColumn()">שמור</button>
+        </div>
+    </div>
+</div>
+
+<!-- Step Type Modal -->
+<div class="modal-overlay" id="stepModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>הוסף שלב חדש</h3>
+            <button class="btn btn-icon btn-secondary" onclick="closeModal('stepModal')">X</button>
+        </div>
+        <div class="modal-body">
+            <div style="display:flex;flex-direction:column;gap:10px">
+                <div class="item-card" onclick="addStep('auto_capture')" style="cursor:pointer">
+                    <h4>&#128268; קליטה אוטומטית</h4>
+                    <div class="meta">קליטת נתון מהמערכת - מספר טלפון, מזהה שיחה וכו'</div>
+                </div>
+                <div class="item-card" onclick="addStep('display_data')" style="cursor:pointer">
+                    <h4>&#128266; השמעת נתון</h4>
+                    <div class="meta">השמעת מידע מהטבלה למאזין (TTS או הקלטה)</div>
+                </div>
+                <div class="item-card" onclick="addStep('collect_input')" style="cursor:pointer">
+                    <h4>&#127908; קלט מהמשתמש</h4>
+                    <div class="meta">בקשת קלט - הקשות DTMF או הקלטה קולית</div>
+                </div>
+                <div class="item-card" onclick="addStep('playback')" style="cursor:pointer">
+                    <h4>&#128361; סיכום/השמעה חוזרת</h4>
+                    <div class="meta">השמעת כל הנתונים שנאספו בחזרה למאזין</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============ DATA ============
+var DB = {
+    tables: [],
+    forms: []
+};
+
+var currentPage = 'tables';
+var editingTableId = null;
+var editingFormId = null;
+var editingColIndex = -1;
+var nextId = 1;
+
+function genId() { return 't' + (nextId++); }
+
+// Load from localStorage
+function loadDB() {
+    try {
+        var saved = localStorage.getItem('ivr_builder_db');
+        if (saved) {
+            DB = JSON.parse(saved);
+            // Restore nextId
+            var maxId = 0;
+            JSON.stringify(DB).replace(/t(\d+)/g, function(m, n) { if (parseInt(n) > maxId) maxId = parseInt(n); });
+            nextId = maxId + 1;
+        }
+    } catch(e) {}
+}
+
+function saveDB() {
+    localStorage.setItem('ivr_builder_db', JSON.stringify(DB));
+}
+
+loadDB();
+
+// Add demo data if empty
+if (DB.tables.length === 0) {
+    DB.tables.push({
+        id: genId(),
+        name: 'תלמידים - בית ספר אופק',
+        columns: [
+            { id: genId(), name: 'טלפון', num: 1, type: 'phone' },
+            { id: genId(), name: 'שם תלמיד', num: 2, type: 'text' },
+            { id: genId(), name: 'כיתה', num: 3, type: 'text' },
+            { id: genId(), name: 'השתתף בטיול אשתקד', num: 4, type: 'boolean' }
+        ]
+    });
+    DB.forms.push({
+        id: genId(),
+        name: 'הרשמה לטיול שנתי',
+        tableId: DB.tables[0].id,
+        steps: [
+            { id: genId(), type: 'auto_capture', name: 'זיהוי מתקשר', systemField: 'phone', targetColumn: DB.tables[0].columns[0].id },
+            { id: genId(), type: 'display_data', name: 'השמעת שם', sourceColumn: DB.tables[0].columns[1].id, lookupColumn: DB.tables[0].columns[0].id, audioType: 'tts', ttsText: 'שלום {value}, ברוכים הבאים למערכת ההרשמה', conditional: false, conditions: [] },
+            { id: genId(), type: 'display_data', name: 'סטטוס שנה שעברה', sourceColumn: DB.tables[0].columns[3].id, lookupColumn: DB.tables[0].columns[0].id, audioType: 'tts', ttsText: '', conditional: true, conditions: [
+                { value: 'כן', audioType: 'tts', ttsText: 'שנה שעברה השתתפת בטיול', audioFile: '' },
+                { value: 'לא', audioType: 'tts', ttsText: 'שנה שעברה לא השתתפת בטיול', audioFile: '' }
+            ]},
+            { id: genId(), type: 'collect_input', name: 'הרשמה לטיול', promptType: 'tts', promptText: 'האם ברצונך להצטרף לטיול השנתי?', promptFile: '', inputType: 'dtmf', targetColumn: '', options: [
+                { key: '1', label: 'כן', value: 'כן' },
+                { key: '2', label: 'לא', value: 'לא' }
+            ]},
+            { id: genId(), type: 'playback', name: 'סיכום', ttsTemplate: 'לסיכום: {שם תלמיד}, בחרת {הרשמה לטיול}. תודה רבה!' }
+        ]
+    });
+    saveDB();
+}
+
+// ============ NAVIGATION ============
+function showPage(page) {
+    currentPage = page;
+    editingTableId = null;
+    editingFormId = null;
+
+    document.querySelectorAll('.nav-item').forEach(function(el, i) {
+        el.classList.toggle('active', (i === 0 && page === 'tables') || (i === 1 && page === 'forms'));
+    });
+
+    if (page === 'tables') renderTablesPage();
+    else renderFormsPage();
+}
+
+// ============ TABLES PAGE ============
+function renderTablesPage() {
+    document.getElementById('pageTitle').textContent = 'טבלאות';
+    document.getElementById('topActions').innerHTML = '<button class="btn btn-primary" onclick="createTable()">+ טבלה חדשה</button>';
+
+    if (DB.tables.length === 0) {
+        document.getElementById('content').innerHTML = '<div class="empty-state"><div class="icon">&#9783;</div><p>אין טבלאות עדיין</p><button class="btn btn-primary" onclick="createTable()">+ צור טבלה ראשונה</button></div>';
+        return;
+    }
+
+    var html = '<div class="item-grid">';
+    DB.tables.forEach(function(t) {
+        html += '<div class="item-card" onclick="editTable(\'' + t.id + '\')">';
+        html += '<h4>' + esc(t.name) + '</h4>';
+        html += '<div class="meta"><span>' + t.columns.length + ' עמודות</span></div>';
+        html += '<div class="actions">';
+        html += '<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();editTable(\'' + t.id + '\')">עריכה</button>';
+        html += '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteTable(\'' + t.id + '\')">מחיקה</button>';
+        html += '</div></div>';
+    });
+    html += '</div>';
+    document.getElementById('content').innerHTML = html;
+}
+
+function createTable() {
+    var name = prompt('שם הטבלה:');
+    if (!name) return;
+    var t = { id: genId(), name: name, columns: [] };
+    DB.tables.push(t);
+    saveDB();
+    editTable(t.id);
+}
+
+function deleteTable(id) {
+    if (!confirm('למחוק את הטבלה?')) return;
+    DB.tables = DB.tables.filter(function(t) { return t.id !== id; });
+    saveDB();
+    renderTablesPage();
+}
+
+function editTable(id) {
+    editingTableId = id;
+    var table = DB.tables.find(function(t) { return t.id === id; });
+    if (!table) return;
+
+    document.getElementById('pageTitle').textContent = 'טבלה: ' + table.name;
+    document.getElementById('topActions').innerHTML =
+        '<button class="btn btn-secondary" onclick="showPage(\'tables\')">חזרה</button>' +
+        '<button class="btn btn-primary" style="margin-right:8px" onclick="renameTable()">שנה שם</button>';
+
+    var html = '<div class="card"><div class="card-header"><h3>עמודות</h3></div><div class="card-body">';
+    html += '<div class="table-workspace">';
+
+    if (table.columns.length === 0) {
+        html += '<div class="empty-state" style="padding:40px"><p>אין עמודות עדיין</p>';
+        html += '<button class="btn btn-primary" onclick="openAddColumn()">+ עמודה ראשונה</button></div>';
+    } else {
+        html += '<table class="visual-table"><thead><tr>';
+        table.columns.forEach(function(col, i) {
+            html += '<th>';
+            html += '<div class="col-actions">';
+            html += '<button onclick="openEditColumn(' + i + ')" title="ערוך">&#9998;</button>';
+            html += '<button onclick="deleteColumn(' + i + ')" title="מחק">&#10005;</button>';
+            html += '</div>';
+            html += esc(col.name);
+            html += '<span class="col-num">עמודה ' + col.num + '</span>';
+            html += '<span class="col-type">' + getTypeName(col.type) + '</span>';
+            html += '</th>';
+        });
+        html += '<th class="add-col-cell" onclick="openAddColumn()" title="הוסף עמודה">+</th>';
+        html += '</tr></thead><tbody>';
+        // Sample rows
+        for (var r = 0; r < 3; r++) {
+            html += '<tr>';
+            table.columns.forEach(function(col) {
+                html += '<td>' + getSampleValue(col.type, r) + '</td>';
+            });
+            html += '<td class="add-col-cell"></td>';
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+    }
+
+    html += '</div></div></div>';
+    document.getElementById('content').innerHTML = html;
+}
+
+function renameTable() {
+    var table = DB.tables.find(function(t) { return t.id === editingTableId; });
+    if (!table) return;
+    var name = prompt('שם חדש:', table.name);
+    if (!name) return;
+    table.name = name;
+    saveDB();
+    editTable(editingTableId);
+}
+
+function openAddColumn() {
+    editingColIndex = -1;
+    document.getElementById('colModalTitle').textContent = 'עמודה חדשה';
+    document.getElementById('colName').value = '';
+    document.getElementById('colType').value = 'text';
+    openModal('colModal');
+}
+
+function openEditColumn(idx) {
+    var table = DB.tables.find(function(t) { return t.id === editingTableId; });
+    if (!table) return;
+    editingColIndex = idx;
+    var col = table.columns[idx];
+    document.getElementById('colModalTitle').textContent = 'עריכת עמודה';
+    document.getElementById('colName').value = col.name;
+    document.getElementById('colType').value = col.type;
+    openModal('colModal');
+}
+
+function saveColumn() {
+    var table = DB.tables.find(function(t) { return t.id === editingTableId; });
+    if (!table) return;
+    var name = document.getElementById('colName').value.trim();
+    var type = document.getElementById('colType').value;
+    if (!name) { alert('נא להזין שם'); return; }
+
+    if (editingColIndex === -1) {
+        var num = table.columns.length > 0 ? Math.max.apply(null, table.columns.map(function(c) { return c.num; })) + 1 : 1;
+        table.columns.push({ id: genId(), name: name, num: num, type: type });
+    } else {
+        table.columns[editingColIndex].name = name;
+        table.columns[editingColIndex].type = type;
+    }
+
+    saveDB();
+    closeModal('colModal');
+    editTable(editingTableId);
+}
+
+function deleteColumn(idx) {
+    if (!confirm('למחוק את העמודה?')) return;
+    var table = DB.tables.find(function(t) { return t.id === editingTableId; });
+    if (!table) return;
+    table.columns.splice(idx, 1);
+    // Renumber
+    table.columns.forEach(function(c, i) { c.num = i + 1; });
+    saveDB();
+    editTable(editingTableId);
+}
+
+// ============ FORMS PAGE ============
+function renderFormsPage() {
+    document.getElementById('pageTitle').textContent = 'טפסים';
+    document.getElementById('topActions').innerHTML = '<button class="btn btn-primary" onclick="createForm()">+ טופס חדש</button>';
+
+    if (DB.forms.length === 0) {
+        document.getElementById('content').innerHTML = '<div class="empty-state"><div class="icon">&#9998;</div><p>אין טפסים עדיין</p><button class="btn btn-primary" onclick="createForm()">+ צור טופס ראשון</button></div>';
+        return;
+    }
+
+    var html = '<div class="item-grid">';
+    DB.forms.forEach(function(f) {
+        var tableName = '-';
+        var t = DB.tables.find(function(t) { return t.id === f.tableId; });
+        if (t) tableName = t.name;
+        html += '<div class="item-card" onclick="editForm(\'' + f.id + '\')">';
+        html += '<h4>' + esc(f.name) + '</h4>';
+        html += '<div class="meta"><span>טבלה: ' + esc(tableName) + '</span><span>' + f.steps.length + ' שלבים</span></div>';
+        html += '<div class="actions">';
+        html += '<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();editForm(\'' + f.id + '\')">עריכה</button>';
+        html += '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteForm(\'' + f.id + '\')">מחיקה</button>';
+        html += '</div></div>';
+    });
+    html += '</div>';
+    document.getElementById('content').innerHTML = html;
+}
+
+function createForm() {
+    if (DB.tables.length === 0) {
+        alert('צור קודם טבלה');
+        return;
+    }
+    var name = prompt('שם הטופס:');
+    if (!name) return;
+    var f = { id: genId(), name: name, tableId: DB.tables[0].id, steps: [] };
+    DB.forms.push(f);
+    saveDB();
+    editForm(f.id);
+}
+
+function deleteForm(id) {
+    if (!confirm('למחוק את הטופס?')) return;
+    DB.forms = DB.forms.filter(function(f) { return f.id !== id; });
+    saveDB();
+    renderFormsPage();
+}
+
+function editForm(id) {
+    editingFormId = id;
+    var form = DB.forms.find(function(f) { return f.id === id; });
+    if (!form) return;
+
+    var table = DB.tables.find(function(t) { return t.id === form.tableId; });
+
+    document.getElementById('pageTitle').textContent = 'טופס: ' + form.name;
+    document.getElementById('topActions').innerHTML =
+        '<button class="btn btn-secondary" onclick="showPage(\'forms\')">חזרה</button>';
+
+    var html = '<div class="form-builder">';
+
+    // Form info
+    html += '<div class="card"><div class="card-body"><div class="form-info">';
+    html += '<div class="form-group"><label>שם הטופס</label><input type="text" value="' + esc(form.name) + '" onchange="updateFormName(this.value)"></div>';
+    html += '<div class="form-group"><label>טבלה מקושרת</label><select onchange="updateFormTable(this.value)">';
+    DB.tables.forEach(function(t) {
+        html += '<option value="' + t.id + '"' + (form.tableId === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>';
+    });
+    html += '</select></div>';
+    html += '</div></div></div>';
+
+    // Steps
+    html += '<div class="card"><div class="card-header"><h3>שלבים (' + form.steps.length + ')</h3>';
+    html += '<button class="btn btn-primary btn-sm" onclick="openModal(\'stepModal\')">+ שלב חדש</button></div>';
+    html += '<div class="card-body">';
+
+    if (form.steps.length === 0) {
+        html += '<div class="empty-state" style="padding:30px"><p>אין שלבים. הוסף שלב ראשון.</p></div>';
+    } else {
+        html += '<div class="step-list">';
+        form.steps.forEach(function(step, idx) {
+            html += renderStepCard(step, idx, form, table);
+        });
+        html += '</div>';
+    }
+
+    html += '</div></div>';
+    html += '</div>';
+
+    document.getElementById('content').innerHTML = html;
+}
+
+function renderStepCard(step, idx, form, table) {
+    var cols = table ? table.columns : [];
+    var typeName = { auto_capture: 'קליטה אוטומטית', display_data: 'השמעת נתון', collect_input: 'קלט מהמשתמש', playback: 'סיכום' }[step.type];
+    var typeClass = { auto_capture: 'auto', display_data: 'display', collect_input: 'input', playback: 'playback' }[step.type];
+
+    var html = '<div class="step-card" id="step_' + idx + '">';
+    html += '<div class="step-header" onclick="toggleStep(' + idx + ')">';
+    html += '<div class="step-num ' + typeClass + '">' + (idx + 1) + '</div>';
+    html += '<div class="step-title">' + esc(step.name) + '</div>';
+    html += '<span class="step-type-badge ' + typeClass + '">' + typeName + '</span>';
+    html += '<div class="step-actions">';
+    if (idx > 0) html += '<button class="btn btn-icon btn-secondary btn-sm" onclick="event.stopPropagation();moveStep(' + idx + ',-1)" title="הזז למעלה">&#9650;</button>';
+    if (idx < form.steps.length - 1) html += '<button class="btn btn-icon btn-secondary btn-sm" onclick="event.stopPropagation();moveStep(' + idx + ',1)" title="הזז למטה">&#9660;</button>';
+    html += '<button class="btn btn-icon btn-danger btn-sm" onclick="event.stopPropagation();deleteStep(' + idx + ')" title="מחק">&#10005;</button>';
+    html += '</div></div>';
+
+    // Step body
+    html += '<div class="step-body">';
+
+    html += '<div class="form-row"><div class="form-group"><label>שם השלב</label><input type="text" value="' + esc(step.name) + '" onchange="updateStep(' + idx + ',\'name\',this.value)"></div></div>';
+
+    if (step.type === 'auto_capture') {
+        html += '<div class="form-row">';
+        html += '<div class="form-group"><label>שדה מערכת</label><select onchange="updateStep(' + idx + ',\'systemField\',this.value)">';
+        html += '<option value="phone"' + (step.systemField === 'phone' ? ' selected' : '') + '>מספר טלפון</option>';
+        html += '<option value="caller_id"' + (step.systemField === 'caller_id' ? ' selected' : '') + '>מזהה מתקשר</option>';
+        html += '<option value="call_id"' + (step.systemField === 'call_id' ? ' selected' : '') + '>מזהה שיחה</option>';
+        html += '<option value="dialed_number"' + (step.systemField === 'dialed_number' ? ' selected' : '') + '>מספר מחויג</option>';
+        html += '</select></div>';
+        html += '<div class="form-group"><label>שמור בעמודה</label><select onchange="updateStep(' + idx + ',\'targetColumn\',this.value)">';
+        html += '<option value="">-- בחר --</option>';
+        cols.forEach(function(c) {
+            html += '<option value="' + c.id + '"' + (step.targetColumn === c.id ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
+        });
+        html += '</select></div></div>';
+    }
+
+    if (step.type === 'display_data') {
+        html += '<div class="form-row">';
+        html += '<div class="form-group"><label>הצג מעמודה</label><select onchange="updateStep(' + idx + ',\'sourceColumn\',this.value)">';
+        html += '<option value="">-- בחר --</option>';
+        cols.forEach(function(c) {
+            html += '<option value="' + c.id + '"' + (step.sourceColumn === c.id ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
+        });
+        html += '</select></div>';
+        html += '<div class="form-group"><label>חפש לפי עמודה</label><select onchange="updateStep(' + idx + ',\'lookupColumn\',this.value)">';
+        html += '<option value="">-- בחר --</option>';
+        cols.forEach(function(c) {
+            html += '<option value="' + c.id + '"' + (step.lookupColumn === c.id ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
+        });
+        html += '</select></div></div>';
+
+        // Conditional toggle
+        html += '<div class="form-row full"><div class="form-group">';
+        html += '<label><input type="checkbox" ' + (step.conditional ? 'checked' : '') + ' onchange="toggleConditional(' + idx + ',this.checked)"> השמעה מותנית (הקלטה שונה לפי ערך)</label>';
+        html += '</div></div>';
+
+        if (!step.conditional) {
+            html += '<div class="form-row">';
+            html += '<div class="form-group"><label>סוג השמעה</label><select onchange="updateStep(' + idx + ',\'audioType\',this.value)">';
+            html += '<option value="tts"' + (step.audioType === 'tts' ? ' selected' : '') + '>הקראת טקסט (TTS)</option>';
+            html += '<option value="file"' + (step.audioType === 'file' ? ' selected' : '') + '>קובץ שמע</option>';
+            html += '</select></div></div>';
+            if (step.audioType === 'tts') {
+                html += '<div class="form-row full"><div class="form-group"><label>טקסט להקראה (השתמש ב-{value} לערך מהטבלה)</label>';
+                html += '<input type="text" value="' + esc(step.ttsText || '') + '" onchange="updateStep(' + idx + ',\'ttsText\',this.value)" placeholder="שלום {value}, ברוך הבא"></div></div>';
+            } else {
+                html += '<div class="form-row full"><div class="form-group"><label>שם קובץ שמע</label>';
+                html += '<input type="text" value="' + esc(step.audioFile || '') + '" onchange="updateStep(' + idx + ',\'audioFile\',this.value)" placeholder="audio/welcome.wav"></div></div>';
+            }
+        } else {
+            // Conditional rows
+            html += '<div class="condition-list">';
+            html += '<label style="font-size:13px;font-weight:600;margin-bottom:8px;display:block">תנאים:</label>';
+            var conds = step.conditions || [];
+            conds.forEach(function(cond, ci) {
+                html += '<div class="condition-row">';
+                html += '<span style="font-size:12px;white-space:nowrap">אם הערך =</span>';
+                html += '<input class="val-input" type="text" value="' + esc(cond.value) + '" onchange="updateCondition(' + idx + ',' + ci + ',\'value\',this.value)">';
+                html += '<select onchange="updateCondition(' + idx + ',' + ci + ',\'audioType\',this.value)" style="width:100px">';
+                html += '<option value="tts"' + (cond.audioType === 'tts' ? ' selected' : '') + '>TTS</option>';
+                html += '<option value="file"' + (cond.audioType === 'file' ? ' selected' : '') + '>קובץ</option>';
+                html += '</select>';
+                if (cond.audioType === 'tts') {
+                    html += '<input class="tts-input" type="text" value="' + esc(cond.ttsText || '') + '" onchange="updateCondition(' + idx + ',' + ci + ',\'ttsText\',this.value)" placeholder="טקסט להקראה">';
+                } else {
+                    html += '<input class="tts-input" type="text" value="' + esc(cond.audioFile || '') + '" onchange="updateCondition(' + idx + ',' + ci + ',\'audioFile\',this.value)" placeholder="שם קובץ שמע">';
+                }
+                html += '<button class="btn btn-icon btn-danger btn-sm" onclick="removeCondition(' + idx + ',' + ci + ')">&#10005;</button>';
+                html += '</div>';
+            });
+            html += '<button class="btn btn-sm btn-secondary" onclick="addCondition(' + idx + ')">+ תנאי</button>';
+            html += '</div>';
+        }
+    }
+
+    if (step.type === 'collect_input') {
+        html += '<div class="form-row">';
+        html += '<div class="form-group"><label>סוג הנחיה</label><select onchange="updateStep(' + idx + ',\'promptType\',this.value)">';
+        html += '<option value="tts"' + (step.promptType === 'tts' ? ' selected' : '') + '>הקראת טקסט (TTS)</option>';
+        html += '<option value="file"' + (step.promptType === 'file' ? ' selected' : '') + '>קובץ שמע</option>';
+        html += '</select></div>';
+        html += '<div class="form-group"><label>סוג קלט</label><select onchange="updateStep(' + idx + ',\'inputType\',this.value)">';
+        html += '<option value="dtmf"' + (step.inputType === 'dtmf' ? ' selected' : '') + '>הקשות (DTMF)</option>';
+        html += '<option value="voice"' + (step.inputType === 'voice' ? ' selected' : '') + '>הקלטה קולית</option>';
+        html += '</select></div></div>';
+
+        if (step.promptType === 'tts') {
+            html += '<div class="form-row full"><div class="form-group"><label>טקסט הנחיה</label>';
+            html += '<input type="text" value="' + esc(step.promptText || '') + '" onchange="updateStep(' + idx + ',\'promptText\',this.value)" placeholder="באיזה כיתה אתם לומדים?"></div></div>';
+        } else {
+            html += '<div class="form-row full"><div class="form-group"><label>שם קובץ שמע</label>';
+            html += '<input type="text" value="' + esc(step.promptFile || '') + '" onchange="updateStep(' + idx + ',\'promptFile\',this.value)" placeholder="audio/question.wav"></div></div>';
+        }
+
+        html += '<div class="form-row"><div class="form-group"><label>שמור תשובה בעמודה</label><select onchange="updateStep(' + idx + ',\'targetColumn\',this.value)">';
+        html += '<option value="">-- בחר --</option>';
+        cols.forEach(function(c) {
+            html += '<option value="' + c.id + '"' + (step.targetColumn === c.id ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
+        });
+        html += '</select></div></div>';
+
+        if (step.inputType === 'dtmf') {
+            html += '<label style="font-size:13px;font-weight:600;margin:8px 0;display:block">אפשרויות:</label>';
+            var opts = step.options || [];
+            opts.forEach(function(opt, oi) {
+                html += '<div class="option-row">';
+                html += '<div class="option-key">' + esc(opt.key) + '</div>';
+                html += '<input type="text" value="' + esc(opt.label) + '" onchange="updateOption(' + idx + ',' + oi + ',\'label\',this.value)" placeholder="תיאור">';
+                html += '<input type="text" value="' + esc(opt.value) + '" onchange="updateOption(' + idx + ',' + oi + ',\'value\',this.value)" placeholder="ערך לשמירה" style="max-width:120px">';
+                html += '<button class="btn btn-icon btn-danger btn-sm" onclick="removeOption(' + idx + ',' + oi + ')">&#10005;</button>';
+                html += '</div>';
+            });
+            html += '<button class="btn btn-sm btn-secondary" onclick="addOption(' + idx + ')">+ אפשרות</button>';
+        }
+    }
+
+    if (step.type === 'playback') {
+        html += '<div class="form-row full"><div class="form-group"><label>תבנית סיכום (TTS)</label>';
+        html += '<textarea rows="3" onchange="updateStep(' + idx + ',\'ttsTemplate\',this.value)" placeholder="לסיכום: {שם תלמיד}, בחרת {הרשמה לטיול}. תודה רבה!">' + esc(step.ttsTemplate || '') + '</textarea>';
+        html += '<small style="color:var(--muted)">השתמש ב-{שם שדה} להכנסת ערכים</small></div></div>';
+    }
+
+    html += '</div></div>';
+    return html;
+}
+
+// ============ STEP ACTIONS ============
+function addStep(type) {
+    closeModal('stepModal');
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+
+    var step = { id: genId(), type: type, name: '' };
+
+    if (type === 'auto_capture') {
+        step.name = 'קליטה אוטומטית';
+        step.systemField = 'phone';
+        step.targetColumn = '';
+    } else if (type === 'display_data') {
+        step.name = 'השמעת נתון';
+        step.sourceColumn = '';
+        step.lookupColumn = '';
+        step.audioType = 'tts';
+        step.ttsText = '';
+        step.audioFile = '';
+        step.conditional = false;
+        step.conditions = [];
+    } else if (type === 'collect_input') {
+        step.name = 'קלט חדש';
+        step.promptType = 'tts';
+        step.promptText = '';
+        step.promptFile = '';
+        step.inputType = 'dtmf';
+        step.targetColumn = '';
+        step.options = [{ key: '1', label: '', value: '' }, { key: '2', label: '', value: '' }];
+    } else if (type === 'playback') {
+        step.name = 'סיכום';
+        step.ttsTemplate = '';
+    }
+
+    form.steps.push(step);
+    saveDB();
+    editForm(editingFormId);
+}
+
+function deleteStep(idx) {
+    if (!confirm('למחוק את השלב?')) return;
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps.splice(idx, 1);
+    saveDB();
+    editForm(editingFormId);
+}
+
+function moveStep(idx, dir) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= form.steps.length) return;
+    var tmp = form.steps[idx];
+    form.steps[idx] = form.steps[newIdx];
+    form.steps[newIdx] = tmp;
+    saveDB();
+    editForm(editingFormId);
+}
+
+function toggleStep(idx) {
+    var el = document.getElementById('step_' + idx);
+    if (el) el.classList.toggle('open');
+}
+
+function updateStep(idx, key, val) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[idx][key] = val;
+    saveDB();
+    // Re-render if type-changing fields
+    if (key === 'audioType' || key === 'promptType' || key === 'inputType') editForm(editingFormId);
+}
+
+function updateFormName(val) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.name = val;
+    saveDB();
+    document.getElementById('pageTitle').textContent = 'טופס: ' + val;
+}
+
+function updateFormTable(val) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.tableId = val;
+    saveDB();
+    editForm(editingFormId);
+}
+
+function toggleConditional(idx, checked) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[idx].conditional = checked;
+    if (checked && (!form.steps[idx].conditions || form.steps[idx].conditions.length === 0)) {
+        form.steps[idx].conditions = [{ value: '', audioType: 'tts', ttsText: '', audioFile: '' }];
+    }
+    saveDB();
+    editForm(editingFormId);
+}
+
+function addCondition(stepIdx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    if (!form.steps[stepIdx].conditions) form.steps[stepIdx].conditions = [];
+    form.steps[stepIdx].conditions.push({ value: '', audioType: 'tts', ttsText: '', audioFile: '' });
+    saveDB();
+    editForm(editingFormId);
+}
+
+function removeCondition(stepIdx, condIdx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[stepIdx].conditions.splice(condIdx, 1);
+    saveDB();
+    editForm(editingFormId);
+}
+
+function updateCondition(stepIdx, condIdx, key, val) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[stepIdx].conditions[condIdx][key] = val;
+    saveDB();
+    if (key === 'audioType') editForm(editingFormId);
+}
+
+function addOption(stepIdx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var opts = form.steps[stepIdx].options || [];
+    var nextKey = String(opts.length + 1);
+    opts.push({ key: nextKey, label: '', value: '' });
+    form.steps[stepIdx].options = opts;
+    saveDB();
+    editForm(editingFormId);
+}
+
+function removeOption(stepIdx, optIdx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[stepIdx].options.splice(optIdx, 1);
+    saveDB();
+    editForm(editingFormId);
+}
+
+function updateOption(stepIdx, optIdx, key, val) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[stepIdx].options[optIdx][key] = val;
+    saveDB();
+}
+
+// ============ HELPERS ============
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function getTypeName(type) {
+    var map = { text: 'טקסט', number: 'מספר', date: 'תאריך', time: 'שעה', datetime: 'תאריך ושעה', phone: 'טלפון', boolean: 'כן/לא' };
+    return map[type] || type;
+}
+
+function getSampleValue(type, row) {
+    var samples = {
+        text: ['יעקב כהן', 'שרה לוי', 'דוד מזרחי'],
+        number: ['42', '18', '7'],
+        date: ['01/09/2025', '15/03/2025', '22/12/2024'],
+        time: ['08:30', '14:00', '19:45'],
+        datetime: ['01/09 08:30', '15/03 14:00', '22/12 19:45'],
+        phone: ['052-1234567', '054-9876543', '050-5551234'],
+        boolean: ['כן', 'לא', 'כן']
+    };
+    return (samples[type] || samples.text)[row % 3];
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Init
+showPage('tables');
+</script>
+</body>
+</html>
