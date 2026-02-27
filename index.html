@@ -982,30 +982,45 @@ function renderStepCard(step, idx, form, table) {
             html += '</select></div></div>';
         }
 
-        // Chips bar: columns (blue) + bank blocks (pink)
+        // Chips bar: per-column grouped (value tag + linked bank blocks)
         html += '<div style="margin-bottom:6px">';
-        html += '<label style="font-size:12px;font-weight:600;color:var(--primary);display:block;margin-bottom:4px">&#128204; ערכי עמודות - לחץ להוספה:</label>';
-        html += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">';
-        cols.forEach(function(c) {
-            html += '<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer" ';
-            html += 'onclick="insertColRef(' + idx + ',\'{' + esc(c.name) + '}\')" title="הכנס ערך עמודה">';
-            html += '{' + esc(c.name) + '}</span>';
-        });
-        html += '</div>';
-
         var recs = DB.recordings || [];
-        if (recs.length > 0) {
-            html += '<label style="font-size:12px;font-weight:600;color:var(--accent);display:block;margin-bottom:4px">&#127908; בלוקים מבנק הקלטות - לחץ להוספה:</label>';
+        var simpleRecs = recs.filter(function(r) { return r.blockType === 'simple'; });
+
+        // Per-column chips: show column value (TTS) + linked bank blocks (audio) for each column
+        html += '<label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:6px">&#128204; בחר נתון להשמעה - לחץ להוספה:</label>';
+        cols.forEach(function(c) {
+            var linkedRecs = recs.filter(function(r) { return r.blockType === 'column' && r.columnName === c.name; });
+            html += '<div style="margin-bottom:6px;padding:6px 8px;background:#f8f9fc;border-radius:8px;border:1px solid var(--border)">';
+            html += '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600">עמודה ' + c.num + ': ' + esc(c.name) + '</div>';
             html += '<div style="display:flex;flex-wrap:wrap;gap:5px">';
-            recs.forEach(function(rec) {
-                var icon = rec.blockType === 'column' ? '&#128203;' : '&#127908;';
-                var tooltip = rec.blockType === 'column' ? 'עמודה: ' + (rec.columnName || '') : (rec.audioFile || '');
+            // Column value chip (TTS - reads the text value)
+            html += '<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer" ';
+            html += 'onclick="insertColRef(' + idx + ',\'{' + esc(c.name) + '}\')" title="השמע ערך טקסט מהעמודה">';
+            html += '&#128172; {' + esc(c.name) + '}</span>';
+            // Linked bank blocks (audio recordings for this column)
+            linkedRecs.forEach(function(rec) {
                 html += '<span style="background:var(--accent);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer" ';
-                html += 'onclick="insertColRef(' + idx + ',\'[[' + esc(rec.name) + ']]\')" title="' + esc(tooltip) + '">';
-                html += icon + ' ' + esc(rec.name) + '</span>';
+                html += 'onclick="insertColRef(' + idx + ',\'[[' + esc(rec.name) + ']]\')" title="הקלטה לפי ערך עמודה: ' + esc(rec.name) + '">';
+                html += '&#127908; [[' + esc(rec.name) + ']]</span>';
             });
-            html += '</div>';
-        } else {
+            html += '</div></div>';
+        });
+
+        // Simple (header) bank blocks - always shown
+        if (simpleRecs.length > 0) {
+            html += '<div style="margin-top:6px;padding:6px 8px;background:#fdf2f8;border-radius:8px;border:1px solid #f9d4e8">';
+            html += '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600">&#127908; הקלטות כלליות</div>';
+            html += '<div style="display:flex;flex-wrap:wrap;gap:5px">';
+            simpleRecs.forEach(function(rec) {
+                html += '<span style="background:var(--accent);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer" ';
+                html += 'onclick="insertColRef(' + idx + ',\'[[' + esc(rec.name) + ']]\')" title="' + esc(rec.audioFile || '') + '">';
+                html += '&#127908; [[' + esc(rec.name) + ']]</span>';
+            });
+            html += '</div></div>';
+        }
+
+        if (recs.length === 0) {
             html += '<small style="color:var(--muted)">&#127908; אין בלוקים בבנק הקלטות. <a href="#" onclick="event.preventDefault();showPage(\'recordings\')" style="color:var(--accent)">צור בלוק חדש</a></small>';
         }
         html += '</div>';
