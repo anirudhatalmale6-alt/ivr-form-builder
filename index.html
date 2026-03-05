@@ -479,6 +479,25 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     text-overflow: ellipsis;
     max-width: 200px;
 }
+.seg-text-input {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    min-width: 80px;
+    max-width: 220px;
+    width: auto;
+    direction: rtl;
+}
+.seg-text-input:focus {
+    outline: none;
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.6);
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.4);
+}
 .tl-seg .seg-del {
     width: 18px; height: 18px;
     background: rgba(0,0,0,0.3);
@@ -1166,16 +1185,22 @@ function renderStepCard(step, idx, form, table) {
             segs.forEach(function(seg, si) {
                 var segClass = 'type-' + seg.type;
                 var segIcon = seg.type === 'text' ? '&#128172;' : seg.type === 'column' ? '&#128202;' : '&#127908;';
-                var segLabel = '';
-                if (seg.type === 'text') segLabel = seg.text || '(ריק)';
-                else if (seg.type === 'column') segLabel = '{' + (seg.columnName || '?') + '}';
-                else if (seg.type === 'recording') segLabel = '[[' + (seg.recName || '?') + ']]';
 
-                html += '<div class="tl-seg ' + segClass + '" onclick="editSegment(' + idx + ',' + si + ',event)" title="לחץ לעריכה">';
-                html += '<span class="seg-icon">' + segIcon + '</span>';
-                html += '<span class="seg-label">' + esc(segLabel) + '</span>';
-                html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
-                html += '</div>';
+                if (seg.type === 'text') {
+                    // Inline editable text segment
+                    html += '<div class="tl-seg ' + segClass + '">';
+                    html += '<span class="seg-icon">' + segIcon + '</span>';
+                    html += '<input type="text" class="seg-text-input" value="' + esc(seg.text || '') + '" placeholder="הקלד טקסט..." onchange="updateSegText(' + idx + ',' + si + ',this.value)" onclick="event.stopPropagation()">';
+                    html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
+                    html += '</div>';
+                } else {
+                    var segLabel = seg.type === 'column' ? '{' + (seg.columnName || '?') + '}' : '[[' + (seg.recName || '?') + ']]';
+                    html += '<div class="tl-seg ' + segClass + '" onclick="editSegment(' + idx + ',' + si + ',event)" title="לחץ לעריכה">';
+                    html += '<span class="seg-icon">' + segIcon + '</span>';
+                    html += '<span class="seg-label">' + esc(segLabel) + '</span>';
+                    html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
+                    html += '</div>';
+                }
                 if (si < segs.length - 1) html += '<span class="tl-connector">&#9654;</span>';
             });
             html += '</div>'; // end timeline-track
@@ -1243,15 +1268,20 @@ function renderStepCard(step, idx, form, table) {
                 csegs.forEach(function(seg, si) {
                     var segClass = 'type-' + seg.type;
                     var segIcon = seg.type === 'text' ? '&#128172;' : seg.type === 'column' ? '&#128202;' : '&#127908;';
-                    var segLabel = '';
-                    if (seg.type === 'text') segLabel = seg.text || '(ריק)';
-                    else if (seg.type === 'column') segLabel = '{' + (seg.columnName || '?') + '}';
-                    else if (seg.type === 'recording') segLabel = '[[' + (seg.recName || '?') + ']]';
-                    html += '<div class="tl-seg ' + segClass + '" onclick="editCondSeg(' + idx + ',' + ci + ',' + si + ',event)" title="לחץ לעריכה">';
-                    html += '<span class="seg-icon">' + segIcon + '</span>';
-                    html += '<span class="seg-label">' + esc(segLabel) + '</span>';
-                    html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
-                    html += '</div>';
+                    if (seg.type === 'text') {
+                        html += '<div class="tl-seg ' + segClass + '">';
+                        html += '<span class="seg-icon">' + segIcon + '</span>';
+                        html += '<input type="text" class="seg-text-input" value="' + esc(seg.text || '') + '" placeholder="הקלד טקסט..." onchange="updateCondSegText(' + idx + ',' + ci + ',' + si + ',this.value)" onclick="event.stopPropagation()">';
+                        html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
+                        html += '</div>';
+                    } else {
+                        var segLabel = seg.type === 'column' ? '{' + (seg.columnName || '?') + '}' : '[[' + (seg.recName || '?') + ']]';
+                        html += '<div class="tl-seg ' + segClass + '" onclick="editCondSeg(' + idx + ',' + ci + ',' + si + ',event)" title="לחץ לעריכה">';
+                        html += '<span class="seg-icon">' + segIcon + '</span>';
+                        html += '<span class="seg-label">' + esc(segLabel) + '</span>';
+                        html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
+                        html += '</div>';
+                    }
                     if (si < csegs.length - 1) html += '<span class="tl-connector">&#9654;</span>';
                 });
                 if (csegs.length === 0) html += '<div style="color:#666;font-size:12px;padding:4px">ריק - הוסף בלוקים</div>';
@@ -1671,12 +1701,24 @@ function addSegment(stepIdx, type) {
     var step = form.steps[stepIdx];
     if (!step.segments) step.segments = [];
     if (type === 'text') {
-        var text = prompt('הזן טקסט חופשי:');
-        if (text === null) return;
-        step.segments.push({ type: 'text', text: text });
+        step.segments.push({ type: 'text', text: '' });
     }
     saveDB();
     editForm(editingFormId);
+    // Focus the new input after render
+    if (type === 'text') {
+        setTimeout(function() {
+            var inputs = document.querySelectorAll('#track_' + stepIdx + ' .seg-text-input');
+            if (inputs.length > 0) inputs[inputs.length - 1].focus();
+        }, 50);
+    }
+}
+
+function updateSegText(stepIdx, segIdx, val) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[stepIdx].segments[segIdx].text = val;
+    saveDB();
 }
 
 function addColumnSegment(stepIdx, colName) {
@@ -1712,14 +1754,8 @@ function editSegment(stepIdx, segIdx, event) {
     var form = DB.forms.find(function(f) { return f.id === editingFormId; });
     if (!form) return;
     var seg = form.steps[stepIdx].segments[segIdx];
-    if (seg.type === 'text') {
-        var newText = prompt('ערוך טקסט:', seg.text);
-        if (newText === null) return;
-        seg.text = newText;
-        saveDB();
-        editForm(editingFormId);
-    } else if (seg.type === 'column') {
-        // Show column picker inline - just cycle through or pick
+    if (seg.type === 'column') {
+        // Cycle through columns on click
         var table = DB.tables.find(function(t) { return t.id === form.tableId; });
         if (!table) return;
         var cols = table.columns.map(function(c) { return c.name; });
@@ -1751,11 +1787,20 @@ function addCondSegText(stepIdx, condIdx) {
     if (!form) return;
     var cond = form.steps[stepIdx].conditions[condIdx];
     if (!cond.segments) cond.segments = [];
-    var text = prompt('הזן טקסט חופשי:');
-    if (text === null) return;
-    cond.segments.push({ type: 'text', text: text });
+    cond.segments.push({ type: 'text', text: '' });
     saveDB();
     editForm(editingFormId);
+    setTimeout(function() {
+        var inputs = document.querySelectorAll('#ctrack_' + stepIdx + '_' + condIdx + ' .seg-text-input');
+        if (inputs.length > 0) inputs[inputs.length - 1].focus();
+    }, 50);
+}
+
+function updateCondSegText(stepIdx, condIdx, segIdx, val) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[stepIdx].conditions[condIdx].segments[segIdx].text = val;
+    saveDB();
 }
 
 function addCondColSeg(stepIdx, condIdx, colName) {
@@ -1788,13 +1833,18 @@ function removeCondSeg(stepIdx, condIdx, segIdx) {
 
 function editCondSeg(stepIdx, condIdx, segIdx, event) {
     event.stopPropagation();
+    // Text segments are inline-editable, no action needed
+    // Column segments cycle on click
     var form = DB.forms.find(function(f) { return f.id === editingFormId; });
     if (!form) return;
     var seg = form.steps[stepIdx].conditions[condIdx].segments[segIdx];
-    if (seg.type === 'text') {
-        var newText = prompt('ערוך טקסט:', seg.text);
-        if (newText === null) return;
-        seg.text = newText;
+    if (seg.type === 'column') {
+        var table = DB.tables.find(function(t) { return t.id === form.tableId; });
+        if (!table) return;
+        var cols = table.columns.map(function(c) { return c.name; });
+        var currentIdx = cols.indexOf(seg.columnName);
+        var nextIdx = (currentIdx + 1) % cols.length;
+        seg.columnName = cols[nextIdx];
         saveDB();
         editForm(editingFormId);
     }
