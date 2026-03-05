@@ -422,6 +422,151 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     gap: 8px;
 }
 
+/* Timeline Track Editor */
+.timeline-track {
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 16px;
+    min-height: 80px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    position: relative;
+    border: 2px solid #2d2d44;
+}
+.timeline-track:empty::after {
+    content: 'לחץ על הכפתורים למטה להוספת בלוקים';
+    color: #666;
+    font-size: 13px;
+}
+.tl-seg {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: default;
+    position: relative;
+    max-width: 300px;
+    animation: segPop 0.2s ease;
+}
+@keyframes segPop {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.tl-seg.type-text {
+    background: #2563eb;
+    color: #fff;
+    border: 1px solid #3b82f6;
+}
+.tl-seg.type-column {
+    background: #059669;
+    color: #fff;
+    border: 1px solid #10b981;
+}
+.tl-seg.type-recording {
+    background: #db2777;
+    color: #fff;
+    border: 1px solid #ec4899;
+}
+.tl-seg .seg-icon { font-size: 14px; flex-shrink: 0; }
+.tl-seg .seg-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+.tl-seg .seg-del {
+    width: 18px; height: 18px;
+    background: rgba(0,0,0,0.3);
+    border: none;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.tl-seg:hover .seg-del { opacity: 1; }
+.tl-seg .seg-del:hover { background: rgba(255,0,0,0.6); }
+.tl-connector {
+    color: #444;
+    font-size: 16px;
+    user-select: none;
+}
+.tl-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+.tl-btn {
+    padding: 8px 14px;
+    border: 2px dashed;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.tl-btn.btn-text { color: #3b82f6; border-color: #3b82f6; }
+.tl-btn.btn-text:hover { background: #eff6ff; }
+.tl-btn.btn-col { color: #10b981; border-color: #10b981; }
+.tl-btn.btn-col:hover { background: #ecfdf5; }
+.tl-btn.btn-rec { color: #ec4899; border-color: #ec4899; }
+.tl-btn.btn-rec:hover { background: #fdf2f8; }
+/* Inline segment edit popup */
+.seg-edit-popup {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    z-index: 100;
+    min-width: 250px;
+}
+.seg-edit-popup input, .seg-edit-popup select, .seg-edit-popup textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    margin-bottom: 8px;
+}
+.seg-edit-popup textarea { resize: vertical; min-height: 60px; }
+.seg-edit-popup .seg-edit-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.tl-track-label {
+    width: 100%;
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.tl-track-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #333;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .sidebar { width: 60px; }
@@ -634,7 +779,14 @@ if (DB.tables.length === 0) {
         tableId: DB.tables[0].id,
         steps: [
             { id: genId(), type: 'auto_capture', name: 'זיהוי מתקשר', systemField: 'phone', targetColumn: DB.tables[0].columns[0].id },
-            { id: genId(), type: 'display_data', name: 'השמעת פרטים', lookupColumn: DB.tables[0].columns[0].id, ttsText: '', conditional: false, conditions: [] },
+            { id: genId(), type: 'display_data', name: 'השמעת פרטים', lookupColumn: DB.tables[0].columns[0].id, segments: [
+                { type: 'recording', recName: 'ברוך הבא למערכת' },
+                { type: 'text', text: 'שלום' },
+                { type: 'column', columnName: 'שם תלמיד' },
+                { type: 'text', text: ', אתם לומדים בכיתה' },
+                { type: 'column', columnName: 'כיתה' },
+                { type: 'recording', recName: 'סיום שיחה' }
+            ], conditional: false, conditions: [] },
             { id: genId(), type: 'display_data', name: 'סטטוס שנה שעברה', lookupColumn: DB.tables[0].columns[0].id, conditionColumn: DB.tables[0].columns[3].id, audioType: 'tts', ttsText: '', conditional: true, conditions: [
                 { value: 'כן', audioType: 'tts', ttsText: 'שנה שעברה השתתפת בטיול', audioFile: '' },
                 { value: 'לא', audioType: 'tts', ttsText: 'שנה שעברה לא השתתפת בטיול', audioFile: '' }
@@ -656,8 +808,6 @@ if (DB.tables.length === 0) {
             { value: 'ג', audioFile: 'class_c.wav' }
         ]}
     ];
-    // Set demo template with bank blocks
-    DB.forms[0].steps[1].ttsText = '[[ברוך הבא למערכת]] שלום {שם תלמיד}, אתם לומדים ב[[כיתת הלימוד]]. [[סיום שיחה]]';
     saveDB();
 }
 
@@ -959,6 +1109,25 @@ function renderStepCard(step, idx, form, table) {
     }
 
     if (step.type === 'display_data') {
+        // Ensure segments array exists (migrate from old ttsText)
+        if (!step.segments) {
+            step.segments = [];
+            if (step.ttsText) {
+                // Parse old format into segments
+                var parts = step.ttsText.split(/(\{[^}]+\}|\[\[[^\]]+\]\])/g);
+                parts.forEach(function(p) {
+                    if (!p) return;
+                    if (p.match(/^\{(.+)\}$/)) {
+                        step.segments.push({ type: 'column', columnName: p.replace(/[{}]/g, '') });
+                    } else if (p.match(/^\[\[(.+)\]\]$/)) {
+                        step.segments.push({ type: 'recording', recName: p.replace(/[\[\]]/g, '') });
+                    } else if (p.trim()) {
+                        step.segments.push({ type: 'text', text: p });
+                    }
+                });
+            }
+        }
+
         // Lookup column
         html += '<div class="form-row full">';
         html += '<div class="form-group"><label>חפש לפי עמודה (מזהה המשתמש)</label><select onchange="updateStep(' + idx + ',\'lookupColumn\',this.value)">';
@@ -982,65 +1151,130 @@ function renderStepCard(step, idx, form, table) {
             html += '</select></div></div>';
         }
 
-        // Chips bar: per-column grouped (value tag + linked bank blocks)
-        html += '<div style="margin-bottom:6px">';
         var recs = DB.recordings || [];
-        var simpleRecs = recs.filter(function(r) { return r.blockType === 'simple'; });
-
-        // Per-column chips: show column value (TTS) + linked bank blocks (audio) for each column
-        html += '<label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:6px">&#128204; בחר נתון להשמעה - לחץ להוספה:</label>';
-        cols.forEach(function(c) {
-            var linkedRecs = recs.filter(function(r) { return r.blockType === 'column' && r.columnName === c.name; });
-            html += '<div style="margin-bottom:6px;padding:6px 8px;background:#f8f9fc;border-radius:8px;border:1px solid var(--border)">';
-            html += '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600">עמודה ' + c.num + ': ' + esc(c.name) + '</div>';
-            html += '<div style="display:flex;flex-wrap:wrap;gap:5px">';
-            // Column value chip (TTS - reads the text value)
-            html += '<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer" ';
-            html += 'onclick="insertColRef(' + idx + ',\'{' + esc(c.name) + '}\')" title="השמע ערך טקסט מהעמודה">';
-            html += '&#128172; {' + esc(c.name) + '}</span>';
-            // Linked bank blocks (audio recordings for this column)
-            linkedRecs.forEach(function(rec) {
-                html += '<span style="background:var(--accent);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer" ';
-                html += 'onclick="insertColRef(' + idx + ',\'[[' + esc(rec.name) + ']]\')" title="הקלטה לפי ערך עמודה: ' + esc(rec.name) + '">';
-                html += '&#127908; [[' + esc(rec.name) + ']]</span>';
-            });
-            html += '</div></div>';
-        });
-
-        // Simple (header) bank blocks - always shown
-        if (simpleRecs.length > 0) {
-            html += '<div style="margin-top:6px;padding:6px 8px;background:#fdf2f8;border-radius:8px;border:1px solid #f9d4e8">';
-            html += '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600">&#127908; הקלטות כלליות</div>';
-            html += '<div style="display:flex;flex-wrap:wrap;gap:5px">';
-            simpleRecs.forEach(function(rec) {
-                html += '<span style="background:var(--accent);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer" ';
-                html += 'onclick="insertColRef(' + idx + ',\'[[' + esc(rec.name) + ']]\')" title="' + esc(rec.audioFile || '') + '">';
-                html += '&#127908; [[' + esc(rec.name) + ']]</span>';
-            });
-            html += '</div></div>';
-        }
-
-        if (recs.length === 0) {
-            html += '<small style="color:var(--muted)">&#127908; אין בלוקים בבנק הקלטות. <a href="#" onclick="event.preventDefault();showPage(\'recordings\')" style="color:var(--accent)">צור בלוק חדש</a></small>';
-        }
-        html += '</div>';
 
         if (!step.conditional) {
-            // Single template text area
-            html += '<div class="form-row full"><div class="form-group"><label>תוכן השמעה</label>';
-            html += '<textarea id="tts_' + idx + '" rows="4" onchange="updateStep(' + idx + ',\'ttsText\',this.value)" placeholder="שלום [[ברוך הבא למערכת]] סך הילדים שמופיע אצלנו {סך ילדים} ילדים [[סיום שיחה]]">' + esc(step.ttsText || '') + '</textarea>';
-            html += '<small style="color:var(--muted)">כתוב טקסט חופשי, הכנס ערכי עמודות עם <strong style="color:var(--primary)">{שם עמודה}</strong> ובלוקים מהבנק עם <strong style="color:var(--accent)">[[שם בלוק]]</strong>. הכל מושמע ברצף.</small></div></div>';
+            // ===== TIMELINE TRACK EDITOR =====
+            html += '<div class="form-row full"><div class="form-group">';
+            html += '<label>&#127909; ציר השמעה (Timeline)</label>';
+            html += '<div class="timeline-track" id="track_' + idx + '">';
+            html += '<div class="tl-track-label">&#9654; רצף השמעה</div>';
+            var segs = step.segments || [];
+            if (segs.length === 0) {
+                html += '<div style="color:#666;font-size:13px;padding:8px;width:100%;text-align:center">לחץ על הכפתורים למטה להוספת בלוקים לציר</div>';
+            }
+            segs.forEach(function(seg, si) {
+                var segClass = 'type-' + seg.type;
+                var segIcon = seg.type === 'text' ? '&#128172;' : seg.type === 'column' ? '&#128202;' : '&#127908;';
+                var segLabel = '';
+                if (seg.type === 'text') segLabel = seg.text || '(ריק)';
+                else if (seg.type === 'column') segLabel = '{' + (seg.columnName || '?') + '}';
+                else if (seg.type === 'recording') segLabel = '[[' + (seg.recName || '?') + ']]';
+
+                html += '<div class="tl-seg ' + segClass + '" onclick="editSegment(' + idx + ',' + si + ',event)" title="לחץ לעריכה">';
+                html += '<span class="seg-icon">' + segIcon + '</span>';
+                html += '<span class="seg-label">' + esc(segLabel) + '</span>';
+                html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
+                html += '</div>';
+                if (si < segs.length - 1) html += '<span class="tl-connector">&#9654;</span>';
+            });
+            html += '</div>'; // end timeline-track
+
+            // Add segment buttons
+            html += '<div class="tl-controls">';
+            html += '<button class="tl-btn btn-text" onclick="addSegment(' + idx + ',\'text\')">&#128172; + טקסט חופשי</button>';
+            html += '<button class="tl-btn btn-col" onclick="showColPicker(' + idx + ')">&#128202; + ערך מעמודה</button>';
+            html += '<button class="tl-btn btn-rec" onclick="showRecPicker(' + idx + ')">&#127908; + הקלטה</button>';
+            html += '</div>';
+
+            // Column picker dropdown (hidden)
+            html += '<div id="colPicker_' + idx + '" style="display:none;margin-top:8px;padding:10px;background:#ecfdf5;border:1px solid #10b981;border-radius:8px">';
+            html += '<label style="font-size:12px;font-weight:600;color:#059669;display:block;margin-bottom:6px">בחר עמודה:</label>';
+            html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+            cols.forEach(function(c) {
+                html += '<button class="btn btn-sm" style="background:#059669;color:#fff" onclick="addColumnSegment(' + idx + ',\'' + esc(c.name) + '\')">עמודה ' + c.num + ': ' + esc(c.name) + '</button>';
+            });
+            html += '</div></div>';
+
+            // Recording picker dropdown (hidden)
+            html += '<div id="recPicker_' + idx + '" style="display:none;margin-top:8px;padding:10px;background:#fdf2f8;border:1px solid #ec4899;border-radius:8px">';
+            html += '<label style="font-size:12px;font-weight:600;color:#db2777;display:block;margin-bottom:6px">בחר הקלטה מהבנק:</label>';
+            if (recs.length > 0) {
+                html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+                recs.forEach(function(r) {
+                    var badge = r.blockType === 'column' ? ' (עמודה: ' + esc(r.columnName || '') + ')' : '';
+                    html += '<button class="btn btn-sm" style="background:#db2777;color:#fff" onclick="addRecSegment(' + idx + ',\'' + esc(r.name) + '\')">' + esc(r.name) + badge + '</button>';
+                });
+                html += '</div>';
+            } else {
+                html += '<small style="color:var(--muted)">אין הקלטות בבנק. <a href="#" onclick="event.preventDefault();showPage(\'recordings\')" style="color:#db2777">צור הקלטה חדשה</a></small>';
+            }
+            html += '</div>';
+
+            html += '</div></div>'; // end form-group, form-row
         } else {
-            // Conditional rows - each row has a template text area
+            // Conditional rows with timeline tracks per condition
             html += '<div class="condition-list">';
             html += '<label style="font-size:13px;font-weight:600;margin-bottom:8px;display:block">תנאים:</label>';
             var conds = step.conditions || [];
             conds.forEach(function(cond, ci) {
-                html += '<div class="condition-row" style="flex-wrap:wrap">';
-                html += '<span style="font-size:12px;white-space:nowrap">אם הערך =</span>';
-                html += '<input class="val-input" type="text" value="' + esc(cond.value) + '" onchange="updateCondition(' + idx + ',' + ci + ',\'value\',this.value)">';
-                html += '<input class="tts-input" type="text" value="' + esc(cond.ttsText || '') + '" onchange="updateCondition(' + idx + ',' + ci + ',\'ttsText\',this.value)" placeholder="טקסט עם {עמודה} ובלוקים [[שם בלוק]]">';
+                // Ensure segments for conditions too
+                if (!cond.segments) {
+                    cond.segments = [];
+                    if (cond.ttsText) {
+                        var cparts = cond.ttsText.split(/(\{[^}]+\}|\[\[[^\]]+\]\])/g);
+                        cparts.forEach(function(p) {
+                            if (!p) return;
+                            if (p.match(/^\{(.+)\}$/)) cond.segments.push({ type: 'column', columnName: p.replace(/[{}]/g, '') });
+                            else if (p.match(/^\[\[(.+)\]\]$/)) cond.segments.push({ type: 'recording', recName: p.replace(/[\[\]]/g, '') });
+                            else if (p.trim()) cond.segments.push({ type: 'text', text: p });
+                        });
+                    }
+                }
+                html += '<div style="padding:12px;background:#f8f9fc;border-radius:10px;margin-bottom:10px;border:1px solid var(--border)">';
+                html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+                html += '<span style="font-size:12px;font-weight:600">אם הערך =</span>';
+                html += '<input style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:120px;font-family:inherit" type="text" value="' + esc(cond.value) + '" onchange="updateCondition(' + idx + ',' + ci + ',\'value\',this.value)">';
                 html += '<button class="btn btn-icon btn-danger btn-sm" onclick="removeCondition(' + idx + ',' + ci + ')">&#10005;</button>';
+                html += '</div>';
+                // Mini timeline for condition
+                html += '<div class="timeline-track" id="ctrack_' + idx + '_' + ci + '" style="min-height:50px">';
+                var csegs = cond.segments || [];
+                csegs.forEach(function(seg, si) {
+                    var segClass = 'type-' + seg.type;
+                    var segIcon = seg.type === 'text' ? '&#128172;' : seg.type === 'column' ? '&#128202;' : '&#127908;';
+                    var segLabel = '';
+                    if (seg.type === 'text') segLabel = seg.text || '(ריק)';
+                    else if (seg.type === 'column') segLabel = '{' + (seg.columnName || '?') + '}';
+                    else if (seg.type === 'recording') segLabel = '[[' + (seg.recName || '?') + ']]';
+                    html += '<div class="tl-seg ' + segClass + '" onclick="editCondSeg(' + idx + ',' + ci + ',' + si + ',event)" title="לחץ לעריכה">';
+                    html += '<span class="seg-icon">' + segIcon + '</span>';
+                    html += '<span class="seg-label">' + esc(segLabel) + '</span>';
+                    html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
+                    html += '</div>';
+                    if (si < csegs.length - 1) html += '<span class="tl-connector">&#9654;</span>';
+                });
+                if (csegs.length === 0) html += '<div style="color:#666;font-size:12px;padding:4px">ריק - הוסף בלוקים</div>';
+                html += '</div>';
+                html += '<div class="tl-controls" style="margin-top:6px">';
+                html += '<button class="tl-btn btn-text btn-sm" onclick="addCondSegText(' + idx + ',' + ci + ')">&#128172; + טקסט</button>';
+                html += '<button class="tl-btn btn-col btn-sm" onclick="showCondColPicker(' + idx + ',' + ci + ')">&#128202; + עמודה</button>';
+                html += '<button class="tl-btn btn-rec btn-sm" onclick="showCondRecPicker(' + idx + ',' + ci + ')">&#127908; + הקלטה</button>';
+                html += '</div>';
+                // Condition column picker
+                html += '<div id="condColPicker_' + idx + '_' + ci + '" style="display:none;margin-top:6px;padding:8px;background:#ecfdf5;border:1px solid #10b981;border-radius:6px">';
+                html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+                cols.forEach(function(c) {
+                    html += '<button class="btn btn-sm" style="background:#059669;color:#fff;font-size:11px" onclick="addCondColSeg(' + idx + ',' + ci + ',\'' + esc(c.name) + '\')">' + esc(c.name) + '</button>';
+                });
+                html += '</div></div>';
+                // Condition recording picker
+                html += '<div id="condRecPicker_' + idx + '_' + ci + '" style="display:none;margin-top:6px;padding:8px;background:#fdf2f8;border:1px solid #ec4899;border-radius:6px">';
+                html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+                recs.forEach(function(r) {
+                    html += '<button class="btn btn-sm" style="background:#db2777;color:#fff;font-size:11px" onclick="addCondRecSeg(' + idx + ',' + ci + ',\'' + esc(r.name) + '\')">' + esc(r.name) + '</button>';
+                });
+                html += '</div></div>';
                 html += '</div>';
             });
             html += '<button class="btn btn-sm btn-secondary" onclick="addCondition(' + idx + ')">+ תנאי</button>';
@@ -1189,18 +1423,6 @@ function updateFormTable(val) {
     editForm(editingFormId);
 }
 
-function insertColRef(stepIdx, ref) {
-    var textarea = document.getElementById('tts_' + stepIdx);
-    if (textarea) {
-        var pos = textarea.selectionStart || textarea.value.length;
-        var val = textarea.value;
-        textarea.value = val.substring(0, pos) + ref + val.substring(pos);
-        textarea.focus();
-        var newPos = pos + ref.length;
-        textarea.setSelectionRange(newPos, newPos);
-        updateStep(stepIdx, 'ttsText', textarea.value);
-    }
-}
 
 function toggleConditional(idx, checked) {
     var form = DB.forms.find(function(f) { return f.id === editingFormId; });
@@ -1440,6 +1662,156 @@ function deleteRecording(id) {
     DB.recordings = (DB.recordings || []).filter(function(r) { return r.id !== id; });
     saveDB();
     renderRecordingsPage();
+}
+
+// ============ TIMELINE SEGMENT MANAGEMENT ============
+function addSegment(stepIdx, type) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var step = form.steps[stepIdx];
+    if (!step.segments) step.segments = [];
+    if (type === 'text') {
+        var text = prompt('הזן טקסט חופשי:');
+        if (text === null) return;
+        step.segments.push({ type: 'text', text: text });
+    }
+    saveDB();
+    editForm(editingFormId);
+}
+
+function addColumnSegment(stepIdx, colName) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var step = form.steps[stepIdx];
+    if (!step.segments) step.segments = [];
+    step.segments.push({ type: 'column', columnName: colName });
+    saveDB();
+    editForm(editingFormId);
+}
+
+function addRecSegment(stepIdx, recName) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var step = form.steps[stepIdx];
+    if (!step.segments) step.segments = [];
+    step.segments.push({ type: 'recording', recName: recName });
+    saveDB();
+    editForm(editingFormId);
+}
+
+function removeSegment(stepIdx, segIdx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[stepIdx].segments.splice(segIdx, 1);
+    saveDB();
+    editForm(editingFormId);
+}
+
+function editSegment(stepIdx, segIdx, event) {
+    event.stopPropagation();
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var seg = form.steps[stepIdx].segments[segIdx];
+    if (seg.type === 'text') {
+        var newText = prompt('ערוך טקסט:', seg.text);
+        if (newText === null) return;
+        seg.text = newText;
+        saveDB();
+        editForm(editingFormId);
+    } else if (seg.type === 'column') {
+        // Show column picker inline - just cycle through or pick
+        var table = DB.tables.find(function(t) { return t.id === form.tableId; });
+        if (!table) return;
+        var cols = table.columns.map(function(c) { return c.name; });
+        var currentIdx = cols.indexOf(seg.columnName);
+        var nextIdx = (currentIdx + 1) % cols.length;
+        seg.columnName = cols[nextIdx];
+        saveDB();
+        editForm(editingFormId);
+    }
+}
+
+function showColPicker(stepIdx) {
+    var el = document.getElementById('colPicker_' + stepIdx);
+    var recEl = document.getElementById('recPicker_' + stepIdx);
+    if (recEl) recEl.style.display = 'none';
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function showRecPicker(stepIdx) {
+    var el = document.getElementById('recPicker_' + stepIdx);
+    var colEl = document.getElementById('colPicker_' + stepIdx);
+    if (colEl) colEl.style.display = 'none';
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// Condition segment management
+function addCondSegText(stepIdx, condIdx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var cond = form.steps[stepIdx].conditions[condIdx];
+    if (!cond.segments) cond.segments = [];
+    var text = prompt('הזן טקסט חופשי:');
+    if (text === null) return;
+    cond.segments.push({ type: 'text', text: text });
+    saveDB();
+    editForm(editingFormId);
+}
+
+function addCondColSeg(stepIdx, condIdx, colName) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var cond = form.steps[stepIdx].conditions[condIdx];
+    if (!cond.segments) cond.segments = [];
+    cond.segments.push({ type: 'column', columnName: colName });
+    saveDB();
+    editForm(editingFormId);
+}
+
+function addCondRecSeg(stepIdx, condIdx, recName) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var cond = form.steps[stepIdx].conditions[condIdx];
+    if (!cond.segments) cond.segments = [];
+    cond.segments.push({ type: 'recording', recName: recName });
+    saveDB();
+    editForm(editingFormId);
+}
+
+function removeCondSeg(stepIdx, condIdx, segIdx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[stepIdx].conditions[condIdx].segments.splice(segIdx, 1);
+    saveDB();
+    editForm(editingFormId);
+}
+
+function editCondSeg(stepIdx, condIdx, segIdx, event) {
+    event.stopPropagation();
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var seg = form.steps[stepIdx].conditions[condIdx].segments[segIdx];
+    if (seg.type === 'text') {
+        var newText = prompt('ערוך טקסט:', seg.text);
+        if (newText === null) return;
+        seg.text = newText;
+        saveDB();
+        editForm(editingFormId);
+    }
+}
+
+function showCondColPicker(stepIdx, condIdx) {
+    var el = document.getElementById('condColPicker_' + stepIdx + '_' + condIdx);
+    var recEl = document.getElementById('condRecPicker_' + stepIdx + '_' + condIdx);
+    if (recEl) recEl.style.display = 'none';
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function showCondRecPicker(stepIdx, condIdx) {
+    var el = document.getElementById('condRecPicker_' + stepIdx + '_' + condIdx);
+    var colEl = document.getElementById('condColPicker_' + stepIdx + '_' + condIdx);
+    if (colEl) colEl.style.display = 'none';
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
 // ============ HELPERS ============
