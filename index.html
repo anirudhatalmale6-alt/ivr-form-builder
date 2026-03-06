@@ -498,6 +498,20 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     border-color: rgba(255,255,255,0.6);
     box-shadow: 0 0 0 2px rgba(37,99,235,0.4);
 }
+.seg-mode-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+.seg-mode-btn:hover { background: rgba(255,255,255,0.35); }
 .tl-seg .seg-del {
     width: 18px; height: 18px;
     background: rgba(0,0,0,0.3);
@@ -615,6 +629,10 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
         <div class="nav-item" onclick="showPage('recordings')">
             <span class="nav-icon">&#127908;</span>
             <span>בנק הקלטות</span>
+        </div>
+        <div class="nav-item" onclick="showPage('dictionary')">
+            <span class="nav-icon">&#128218;</span>
+            <span>מילון הקלטות</span>
         </div>
     </nav>
 </div>
@@ -746,7 +764,8 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 var DB = {
     tables: [],
     forms: [],
-    recordings: []
+    recordings: [],
+    dictionary: []
 };
 
 var currentPage = 'tables';
@@ -766,6 +785,7 @@ function loadDB() {
         if (saved) {
             DB = JSON.parse(saved);
             if (!DB.recordings) DB.recordings = [];
+            if (!DB.dictionary) DB.dictionary = [];
             // Restore nextId
             var maxId = 0;
             JSON.stringify(DB).replace(/t(\d+)/g, function(m, n) { if (parseInt(n) > maxId) maxId = parseInt(n); });
@@ -827,6 +847,13 @@ if (DB.tables.length === 0) {
             { value: 'ג', audioFile: 'class_c.wav' }
         ]}
     ];
+    DB.dictionary = [
+        { id: genId(), value: 'כיתה א', audioFile: 'class_alef.wav' },
+        { id: genId(), value: 'כיתה ב', audioFile: 'class_bet.wav' },
+        { id: genId(), value: 'כיתה ג', audioFile: 'class_gimel.wav' },
+        { id: genId(), value: 'כן', audioFile: 'ken.wav' },
+        { id: genId(), value: 'לא', audioFile: 'lo.wav' }
+    ];
     saveDB();
 }
 
@@ -838,12 +865,13 @@ function showPage(page) {
     openStepIdx = -1;
 
     document.querySelectorAll('.nav-item').forEach(function(el, i) {
-        el.classList.toggle('active', (i === 0 && page === 'tables') || (i === 1 && page === 'forms') || (i === 2 && page === 'recordings'));
+        el.classList.toggle('active', (i === 0 && page === 'tables') || (i === 1 && page === 'forms') || (i === 2 && page === 'recordings') || (i === 3 && page === 'dictionary'));
     });
 
     if (page === 'tables') renderTablesPage();
     else if (page === 'forms') renderFormsPage();
     else if (page === 'recordings') renderRecordingsPage();
+    else if (page === 'dictionary') renderDictionaryPage();
 }
 
 // ============ TABLES PAGE ============
@@ -1193,11 +1221,21 @@ function renderStepCard(step, idx, form, table) {
                     html += '<input type="text" class="seg-text-input" value="' + esc(seg.text || '') + '" placeholder="הקלד טקסט..." onchange="updateSegText(' + idx + ',' + si + ',this.value)" onclick="event.stopPropagation()">';
                     html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
                     html += '</div>';
+                } else if (seg.type === 'column') {
+                    var colMode = seg.playMode || 'tts';
+                    var modeIcon = colMode === 'recording' ? '&#127908;' : '&#128172;';
+                    var modeLabel = colMode === 'recording' ? 'מילון' : 'TTS';
+                    var modeBg = colMode === 'recording' ? 'background:#7c3aed;border-color:#8b5cf6' : '';
+                    html += '<div class="tl-seg ' + segClass + '" style="' + modeBg + '" onclick="editSegment(' + idx + ',' + si + ',event)" title="לחץ להחלפת עמודה">';
+                    html += '<span class="seg-icon">' + segIcon + '</span>';
+                    html += '<span class="seg-label">{' + esc(seg.columnName || '?') + '}</span>';
+                    html += '<button class="seg-mode-btn" onclick="event.stopPropagation();toggleSegMode(' + idx + ',' + si + ')" title="החלף בין TTS להקלטה מהמילון">' + modeIcon + ' ' + modeLabel + '</button>';
+                    html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
+                    html += '</div>';
                 } else {
-                    var segLabel = seg.type === 'column' ? '{' + (seg.columnName || '?') + '}' : '[[' + (seg.recName || '?') + ']]';
                     html += '<div class="tl-seg ' + segClass + '" onclick="editSegment(' + idx + ',' + si + ',event)" title="לחץ לעריכה">';
                     html += '<span class="seg-icon">' + segIcon + '</span>';
-                    html += '<span class="seg-label">' + esc(segLabel) + '</span>';
+                    html += '<span class="seg-label">[[' + esc(seg.recName || '?') + ']]</span>';
                     html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
                     html += '</div>';
                 }
@@ -1274,11 +1312,21 @@ function renderStepCard(step, idx, form, table) {
                         html += '<input type="text" class="seg-text-input" value="' + esc(seg.text || '') + '" placeholder="הקלד טקסט..." onchange="updateCondSegText(' + idx + ',' + ci + ',' + si + ',this.value)" onclick="event.stopPropagation()">';
                         html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
                         html += '</div>';
+                    } else if (seg.type === 'column') {
+                        var cColMode = seg.playMode || 'tts';
+                        var cModeIcon = cColMode === 'recording' ? '&#127908;' : '&#128172;';
+                        var cModeLabel = cColMode === 'recording' ? 'מילון' : 'TTS';
+                        var cModeBg = cColMode === 'recording' ? 'background:#7c3aed;border-color:#8b5cf6' : '';
+                        html += '<div class="tl-seg ' + segClass + '" style="' + cModeBg + '" onclick="editCondSeg(' + idx + ',' + ci + ',' + si + ',event)" title="לחץ לעריכה">';
+                        html += '<span class="seg-icon">' + segIcon + '</span>';
+                        html += '<span class="seg-label">{' + esc(seg.columnName || '?') + '}</span>';
+                        html += '<button class="seg-mode-btn" onclick="event.stopPropagation();toggleCondSegMode(' + idx + ',' + ci + ',' + si + ')">' + cModeIcon + ' ' + cModeLabel + '</button>';
+                        html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
+                        html += '</div>';
                     } else {
-                        var segLabel = seg.type === 'column' ? '{' + (seg.columnName || '?') + '}' : '[[' + (seg.recName || '?') + ']]';
                         html += '<div class="tl-seg ' + segClass + '" onclick="editCondSeg(' + idx + ',' + ci + ',' + si + ',event)" title="לחץ לעריכה">';
                         html += '<span class="seg-icon">' + segIcon + '</span>';
-                        html += '<span class="seg-label">' + esc(segLabel) + '</span>';
+                        html += '<span class="seg-label">[[' + esc(seg.recName || '?') + ']]</span>';
                         html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
                         html += '</div>';
                     }
@@ -1694,6 +1742,107 @@ function deleteRecording(id) {
     renderRecordingsPage();
 }
 
+// ============ RECORDING DICTIONARY ============
+function renderDictionaryPage() {
+    document.getElementById('pageTitle').textContent = 'מילון הקלטות';
+    document.getElementById('topActions').innerHTML = '<button class="btn btn-primary" onclick="addDictEntry()">+ ערך חדש</button>';
+
+    if (!DB.dictionary) DB.dictionary = [];
+
+    var html = '<div class="card"><div class="card-header"><h3>מילון ערכים ← הקלטות</h3>';
+    html += '<div style="font-size:12px;color:var(--muted)">כל ערך שקיים כאן ישמיע הקלטה במקום TTS</div></div>';
+    html += '<div class="card-body">';
+
+    if (DB.dictionary.length === 0) {
+        html += '<div class="empty-state" style="padding:30px"><div class="icon">&#128218;</div><p>אין ערכים במילון עדיין</p>';
+        html += '<button class="btn btn-primary" onclick="addDictEntry()">+ הוסף ערך ראשון</button></div>';
+    } else {
+        // Search box
+        html += '<div style="margin-bottom:16px"><input type="text" id="dictSearch" placeholder="&#128269; חפש ערך..." oninput="filterDict(this.value)" style="width:100%;max-width:400px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit"></div>';
+
+        html += '<table style="width:100%;border-collapse:collapse">';
+        html += '<thead><tr>';
+        html += '<th style="text-align:right;padding:10px 12px;border-bottom:2px solid var(--primary);font-size:13px;color:var(--primary)">#</th>';
+        html += '<th style="text-align:right;padding:10px 12px;border-bottom:2px solid var(--primary);font-size:13px;color:var(--primary)">ערך (טקסט)</th>';
+        html += '<th style="text-align:right;padding:10px 12px;border-bottom:2px solid var(--primary);font-size:13px;color:var(--primary)">קובץ שמע</th>';
+        html += '<th style="text-align:center;padding:10px 12px;border-bottom:2px solid var(--primary);font-size:13px;color:var(--primary)">פעולות</th>';
+        html += '</tr></thead><tbody id="dictBody">';
+        DB.dictionary.forEach(function(entry, i) {
+            html += renderDictRow(entry, i);
+        });
+        html += '</tbody></table>';
+    }
+
+    html += '</div></div>';
+
+    // Stats
+    html += '<div style="margin-top:16px;display:flex;gap:12px">';
+    html += '<div class="card" style="flex:1;text-align:center;padding:20px"><div style="font-size:28px;font-weight:bold;color:var(--primary)">' + DB.dictionary.length + '</div><div style="font-size:12px;color:var(--muted)">ערכים במילון</div></div>';
+    // Count how many unique values exist across all tables
+    var allValues = new Set();
+    DB.tables.forEach(function(t) { t.columns.forEach(function(c) { /* columns don't store data yet */ }); });
+    var matched = 0;
+    html += '<div class="card" style="flex:1;text-align:center;padding:20px"><div style="font-size:28px;font-weight:bold;color:var(--success)">&#127908;</div><div style="font-size:12px;color:var(--muted)">ערכים עם הקלטה ישמיעו אודיו<br>ערכים בלי הקלטה ישמיעו TTS</div></div>';
+    html += '</div>';
+
+    document.getElementById('content').innerHTML = html;
+}
+
+function renderDictRow(entry, i) {
+    return '<tr class="dict-row" data-value="' + esc(entry.value).toLowerCase() + '">' +
+        '<td style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;color:var(--muted)">' + (i + 1) + '</td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid var(--border)"><input type="text" value="' + esc(entry.value) + '" onchange="updateDictEntry(\'' + entry.id + '\',\'value\',this.value)" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;width:100%;font-weight:600"></td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid var(--border)"><input type="text" value="' + esc(entry.audioFile) + '" onchange="updateDictEntry(\'' + entry.id + '\',\'audioFile\',this.value)" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;width:100%" placeholder="example.wav"></td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid var(--border);text-align:center"><button class="btn btn-sm btn-danger" onclick="deleteDictEntry(\'' + entry.id + '\')">&#10005; מחק</button></td>' +
+        '</tr>';
+}
+
+function addDictEntry() {
+    if (!DB.dictionary) DB.dictionary = [];
+    var entry = { id: genId(), value: '', audioFile: '' };
+    DB.dictionary.push(entry);
+    saveDB();
+    renderDictionaryPage();
+    // Focus the new value input
+    setTimeout(function() {
+        var rows = document.querySelectorAll('#dictBody tr');
+        if (rows.length > 0) {
+            var lastRow = rows[rows.length - 1];
+            var input = lastRow.querySelector('input');
+            if (input) input.focus();
+        }
+    }, 50);
+}
+
+function updateDictEntry(id, key, val) {
+    var entry = (DB.dictionary || []).find(function(e) { return e.id === id; });
+    if (entry) {
+        entry[key] = val;
+        saveDB();
+    }
+}
+
+function deleteDictEntry(id) {
+    if (!confirm('למחוק את הערך מהמילון?')) return;
+    DB.dictionary = (DB.dictionary || []).filter(function(e) { return e.id !== id; });
+    saveDB();
+    renderDictionaryPage();
+}
+
+function filterDict(query) {
+    query = query.toLowerCase();
+    document.querySelectorAll('.dict-row').forEach(function(row) {
+        var val = row.getAttribute('data-value') || '';
+        row.style.display = val.indexOf(query) >= 0 || !query ? '' : 'none';
+    });
+}
+
+// Check if a value has a recording in the dictionary
+function hasDictRecording(value) {
+    if (!value || !DB.dictionary) return false;
+    return DB.dictionary.some(function(e) { return e.value === value; });
+}
+
 // ============ TIMELINE SEGMENT MANAGEMENT ============
 function addSegment(stepIdx, type) {
     var form = DB.forms.find(function(f) { return f.id === editingFormId; });
@@ -1745,6 +1894,24 @@ function removeSegment(stepIdx, segIdx) {
     var form = DB.forms.find(function(f) { return f.id === editingFormId; });
     if (!form) return;
     form.steps[stepIdx].segments.splice(segIdx, 1);
+    saveDB();
+    editForm(editingFormId);
+}
+
+function toggleSegMode(stepIdx, segIdx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var seg = form.steps[stepIdx].segments[segIdx];
+    seg.playMode = (seg.playMode === 'recording') ? 'tts' : 'recording';
+    saveDB();
+    editForm(editingFormId);
+}
+
+function toggleCondSegMode(stepIdx, condIdx, segIdx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var seg = form.steps[stepIdx].conditions[condIdx].segments[segIdx];
+    seg.playMode = (seg.playMode === 'recording') ? 'tts' : 'recording';
     saveDB();
     editForm(editingFormId);
 }
