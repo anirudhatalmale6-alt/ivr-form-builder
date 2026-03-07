@@ -660,46 +660,52 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     border: 1px solid var(--border);
     align-items: flex-end;
 }
-.canvas-flow {
-    display: flex;
-    gap: 12px;
-    padding: 16px;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    background: rgba(255,255,255,0.6);
+.canvas-tracks {
+    background: #1e1e2e;
     border-radius: 14px;
-    border: 2px solid var(--border);
-    min-height: 100px;
+    padding: 12px;
+    min-height: 200px;
+    position: relative;
+    border: 2px solid #2d2d44;
 }
-.flow-break {
-    width: 100%;
+.track-row {
     display: flex;
-    align-items: center;
     gap: 10px;
-    margin: 4px 0;
+    padding: 12px 10px;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    min-height: 70px;
+    position: relative;
 }
-.flow-break::before, .flow-break::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: #ddd;
-}
-.flow-break-icon {
-    font-size: 11px;
+.track-row:last-child { border-bottom: none; }
+.track-row:hover { background: rgba(255,255,255,0.02); }
+.track-label {
+    writing-mode: horizontal-tb;
+    font-size: 10px;
     font-weight: 700;
-    color: var(--muted);
-    white-space: nowrap;
-    padding: 3px 10px;
-    background: #f0f1f6;
-    border-radius: 12px;
-    border: 1px solid #ddd;
+    color: rgba(255,255,255,0.3);
+    min-width: 24px;
+    text-align: center;
+    user-select: none;
+}
+.track-blocks {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.track-row-connector {
+    text-align: center;
+    font-size: 14px;
+    color: rgba(255,255,255,0.15);
+    padding: 0 4px;
 }
 .condition-branches {
     display: flex;
     flex-direction: column;
     gap: 4px;
     margin-right: 4px;
-    align-self: center;
 }
 .branch-tag {
     font-size: 10px;
@@ -710,29 +716,51 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     border: 1px solid #fcd34d;
     font-weight: 600;
 }
+.block-row-toggle {
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    opacity: 0;
+}
+.block-cube:hover .block-row-toggle { opacity: 1; }
+.block-row-toggle:hover {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+}
 .block-cube {
-    width: 140px;
-    min-height: 140px;
-    background: #fff;
-    border-radius: 14px;
-    border: 2px solid #ddd;
+    width: 130px;
+    min-height: 120px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 12px;
+    border: 2px solid rgba(255,255,255,0.12);
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 14px 8px 8px;
+    padding: 12px 8px 8px;
     position: relative;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     transition: all 0.25s;
     animation: blockPop 0.3s ease;
+    color: #fff;
 }
 @keyframes blockPop {
     from { transform: scale(0.85); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
 }
 .block-cube:hover {
-    border-color: var(--primary);
-    box-shadow: 0 6px 20px rgba(67,97,238,0.15);
-    transform: translateY(-3px);
+    border-color: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.12);
+    transform: translateY(-2px);
 }
 .block-cube .block-num {
     position: absolute;
@@ -747,12 +775,12 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     align-items: center;
     justify-content: center;
 }
-.block-cube .block-icon { font-size: 32px; margin: 6px 0 4px; }
+.block-cube .block-icon { font-size: 28px; margin: 4px 0 3px; }
 .block-cube .block-name {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     text-align: center;
-    color: var(--text);
+    color: #fff;
     word-break: break-word;
     line-height: 1.3;
     flex: 1;
@@ -760,8 +788,8 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     align-items: center;
 }
 .block-cube .block-summary {
-    font-size: 10px;
-    color: var(--muted);
+    font-size: 9px;
+    color: rgba(255,255,255,0.5);
     text-align: center;
     max-width: 120px;
     overflow: hidden;
@@ -775,21 +803,21 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     margin-top: 6px;
 }
 .block-act {
-    width: 30px; height: 30px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: #f8f9fc;
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: 12px;
     transition: all 0.2s;
     font-family: inherit;
-    color: var(--text);
+    color: rgba(255,255,255,0.6);
 }
-.block-act:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
-.block-act.del-act:hover { background: var(--danger); border-color: var(--danger); }
+.block-act:hover { background: rgba(255,255,255,0.2); color: #fff; }
+.block-act.del-act:hover { background: rgba(239,71,111,0.6); color: #fff; }
 .block-connector { color: #ccc; font-size: 18px; display: flex; align-items: center; user-select: none; }
 
 /* Responsive */
@@ -1333,38 +1361,67 @@ function editForm(id) {
 }
 
 // ============ CANVAS RENDERING ============
-function renderCanvasBlocks(form, table) {
-    var html = '';
-
-    // Single flow container - all blocks on one canvas
-    html += '<div class="canvas-flow">';
-
+function ensureRows(form) {
+    // Assign row numbers if not set
+    var currentRow = 0;
     form.steps.forEach(function(step, idx) {
-        var isCondition = step.type === 'display_data' && step.conditional;
-        var isCollectDTMF = step.type === 'collect_input' && step.inputType === 'dtmf';
-
-        // Conditions and DTMF options break to a new line
-        if (idx > 0 && (isCondition || isCollectDTMF)) {
-            html += '</div>'; // close current flow
-            html += '<div class="flow-break"><span class="flow-break-icon">' + (isCondition ? '&#128256; תנאי' : '&#127908; קלט') + '</span></div>';
-            html += '<div class="canvas-flow">';
-        } else if (idx > 0) {
-            html += '<span class="block-connector">&#9654;</span>';
-        }
-
-        html += renderBlockCube(step, idx, form);
-
-        // After a condition block, show branch preview
-        if (isCondition && step.conditions && step.conditions.length > 0) {
-            html += '<div class="condition-branches">';
-            step.conditions.forEach(function(cond, ci) {
-                html += '<span class="branch-tag">' + (cond.value ? esc(cond.value) : '...') + '</span>';
-            });
-            html += '</div>';
+        if (typeof step.row !== 'number') {
+            // Auto-assign: conditions and DTMF start new row
+            var isCondition = step.type === 'display_data' && step.conditional;
+            var isCollectDTMF = step.type === 'collect_input' && step.inputType === 'dtmf';
+            if (idx > 0 && (isCondition || isCollectDTMF)) currentRow++;
+            step.row = currentRow;
+            // After a condition/DTMF block, next block goes to new row too
+            if (isCondition || isCollectDTMF) currentRow++;
         }
     });
+}
 
-    html += '</div>'; // close canvas-flow
+function renderCanvasBlocks(form, table) {
+    ensureRows(form);
+
+    // Group steps by row
+    var rows = [];
+    var rowMap = {};
+    form.steps.forEach(function(step, idx) {
+        var r = step.row || 0;
+        if (!rowMap[r]) {
+            rowMap[r] = { row: r, blocks: [] };
+            rows.push(rowMap[r]);
+        }
+        rowMap[r].blocks.push({ step: step, idx: idx });
+    });
+
+    // Sort rows by row number
+    rows.sort(function(a, b) { return a.row - b.row; });
+
+    var html = '<div class="canvas-tracks">';
+
+    rows.forEach(function(row, ri) {
+        html += '<div class="track-row">';
+        html += '<div class="track-label">' + (ri + 1) + '</div>';
+        html += '<div class="track-blocks">';
+
+        row.blocks.forEach(function(b, bi) {
+            if (bi > 0) html += '<span class="block-connector" style="color:rgba(255,255,255,0.2)">&#9654;</span>';
+            html += renderBlockCube(b.step, b.idx, form);
+
+            // Condition branch tags
+            var isCondition = b.step.type === 'display_data' && b.step.conditional;
+            if (isCondition && b.step.conditions && b.step.conditions.length > 0) {
+                html += '<div class="condition-branches">';
+                b.step.conditions.forEach(function(cond) {
+                    html += '<span class="branch-tag">' + (cond.value ? esc(cond.value) : '...') + '</span>';
+                });
+                html += '</div>';
+            }
+        });
+
+        html += '</div>'; // track-blocks
+        html += '</div>'; // track-row
+    });
+
+    html += '</div>'; // canvas-tracks
     return html;
 }
 
@@ -1400,6 +1457,10 @@ function renderBlockCube(step, idx, form) {
 
     var html = '<div class="block-cube" style="border-color:' + borderColor + '">';
     html += '<div class="block-num" style="background:' + numBg + '">' + (idx + 1) + '</div>';
+    // Row toggle button (move to new row / merge with previous row)
+    if (idx > 0) {
+        html += '<button class="block-row-toggle" onclick="event.stopPropagation();toggleBlockRow(' + idx + ')" title="העבר לשורה חדשה / חבר לשורה הקודמת">&#8629;</button>';
+    }
     html += '<div class="block-icon">' + icon + '</div>';
     html += '<div class="block-name">' + esc(step.name) + '</div>';
     if (summary) html += '<div class="block-summary">' + esc(summary) + '</div>';
@@ -1412,6 +1473,30 @@ function renderBlockCube(step, idx, form) {
     return html;
 }
 
+function toggleBlockRow(idx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form || idx <= 0) return;
+
+    ensureRows(form);
+    var step = form.steps[idx];
+    var prevStep = form.steps[idx - 1];
+
+    if (step.row === prevStep.row) {
+        // Move to a new row: shift this and all subsequent same-row blocks
+        var oldRow = step.row;
+        // Insert a new row by incrementing all rows >= step.row for blocks from idx onward
+        for (var i = idx; i < form.steps.length; i++) {
+            form.steps[i].row = form.steps[i].row + 1;
+        }
+    } else {
+        // Merge with previous row
+        var targetRow = prevStep.row;
+        step.row = targetRow;
+    }
+    saveDB();
+    editForm(editingFormId);
+}
+
 function addCanvasBlock(type) {
     var form = DB.forms.find(function(f) { return f.id === editingFormId; });
     if (!form) return;
@@ -1419,7 +1504,13 @@ function addCanvasBlock(type) {
     var isCondition = type === 'display_data_cond';
     var actualType = isCondition ? 'display_data' : type;
 
-    var step = { id: genId(), type: actualType, name: '' };
+    // Determine row: conditions always get new row, others go on last row
+    ensureRows(form);
+    var lastRow = 0;
+    form.steps.forEach(function(s) { if (s.row > lastRow) lastRow = s.row; });
+    var newRow = (isCondition) ? lastRow + 1 : lastRow;
+
+    var step = { id: genId(), type: actualType, name: '', row: newRow };
 
     if (actualType === 'auto_capture') {
         step.name = 'קליטה אוטומטית';
