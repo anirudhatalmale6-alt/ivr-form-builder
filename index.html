@@ -600,6 +600,175 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     background: #333;
 }
 
+/* Canvas Workspace */
+.canvas-container {
+    display: flex;
+    gap: 0;
+    height: calc(100vh - 120px);
+}
+.tool-palette {
+    width: 130px;
+    background: #1a1a2e;
+    border-radius: 0 12px 12px 0;
+    padding: 14px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.tool-palette-title {
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 2px;
+}
+.tool-btn {
+    padding: 12px 6px;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    color: #fff;
+    cursor: pointer;
+    text-align: center;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+.tool-btn:hover {
+    background: rgba(255,255,255,0.12);
+    transform: scale(1.05);
+}
+.tool-btn .tool-icon { font-size: 24px; display: block; margin-bottom: 3px; }
+.tool-btn .tool-label { font-size: 10px; font-weight: 600; }
+.canvas {
+    flex: 1;
+    background: linear-gradient(135deg, #f5f6fa 0%, #eaecf2 100%);
+    border: 2px solid var(--border);
+    border-radius: 12px 0 0 12px;
+    padding: 20px;
+    overflow-y: auto;
+}
+.canvas-info-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    align-items: flex-end;
+}
+.canvas-row {
+    display: flex;
+    gap: 14px;
+    padding: 22px 16px 14px;
+    margin-bottom: 6px;
+    border-radius: 12px;
+    flex-wrap: wrap;
+    position: relative;
+    min-height: 80px;
+    align-items: flex-start;
+}
+.canvas-row.row-display { background: rgba(37,99,235,0.05); border: 1px dashed rgba(37,99,235,0.2); }
+.canvas-row.row-input { background: rgba(5,150,105,0.05); border: 1px dashed rgba(5,150,105,0.2); }
+.canvas-row.row-condition { background: rgba(245,158,11,0.05); border: 1px dashed rgba(245,158,11,0.2); }
+.canvas-row.row-auto { background: rgba(108,117,125,0.05); border: 1px dashed rgba(108,117,125,0.2); }
+.canvas-row.row-playback { background: rgba(247,37,133,0.05); border: 1px dashed rgba(247,37,133,0.2); }
+.row-label {
+    position: absolute;
+    top: -10px;
+    right: 16px;
+    background: #fff;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+}
+.row-connector { text-align: center; margin: -2px 0; font-size: 20px; color: #bbb; line-height: 1; }
+.block-cube {
+    width: 140px;
+    min-height: 140px;
+    background: #fff;
+    border-radius: 14px;
+    border: 2px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 8px 8px;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transition: all 0.25s;
+    animation: blockPop 0.3s ease;
+}
+@keyframes blockPop {
+    from { transform: scale(0.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.block-cube:hover {
+    border-color: var(--primary);
+    box-shadow: 0 6px 20px rgba(67,97,238,0.15);
+    transform: translateY(-3px);
+}
+.block-cube .block-num {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.block-cube .block-icon { font-size: 32px; margin: 6px 0 4px; }
+.block-cube .block-name {
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text);
+    word-break: break-word;
+    line-height: 1.3;
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+.block-cube .block-summary {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 2px;
+}
+.block-cube .block-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 6px;
+}
+.block-act {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #f8f9fc;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.2s;
+    font-family: inherit;
+    color: var(--text);
+}
+.block-act:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.block-act.del-act:hover { background: var(--danger); border-color: var(--danger); }
+.block-connector { color: #ccc; font-size: 18px; display: flex; align-items: center; user-select: none; }
+
 /* Responsive */
 @media (max-width: 768px) {
     .sidebar { width: 60px; }
@@ -759,6 +928,21 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     </div>
 </div>
 
+<!-- Block Editor Modal -->
+<div class="modal-overlay" id="blockEditorModal">
+    <div class="modal" style="width:700px;max-width:95vw;max-height:90vh">
+        <div class="modal-header">
+            <h3 id="blockEditorTitle">עריכת בלוק</h3>
+            <button class="btn btn-icon btn-secondary" onclick="closeBlockEditor()">X</button>
+        </div>
+        <div class="modal-body" id="blockEditorBody" style="max-height:70vh;overflow-y:auto">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeBlockEditor()">סגור</button>
+        </div>
+    </div>
+</div>
+
 <script>
 // ============ DATA ============
 var DB = {
@@ -774,6 +958,7 @@ var editingFormId = null;
 var editingColIndex = -1;
 var editingRecId = null;
 var openStepIdx = -1;
+var editingBlockIdx = -1;
 var nextId = 1;
 
 function genId() { return 't' + (nextId++); }
@@ -863,6 +1048,7 @@ function showPage(page) {
     editingTableId = null;
     editingFormId = null;
     openStepIdx = -1;
+    editingBlockIdx = -1;
 
     document.querySelectorAll('.nav-item').forEach(function(el, i) {
         el.classList.toggle('active', (i === 0 && page === 'tables') || (i === 1 && page === 'forms') || (i === 2 && page === 'recordings') || (i === 3 && page === 'dictionary'));
@@ -1079,65 +1265,204 @@ function editForm(id) {
     document.getElementById('topActions').innerHTML =
         '<button class="btn btn-secondary" onclick="showPage(\'forms\')">חזרה</button>';
 
-    var html = '<div class="form-builder">';
+    var html = '<div class="canvas-container">';
 
-    // Form info
-    html += '<div class="card"><div class="card-body"><div class="form-info">';
-    html += '<div class="form-group"><label>שם הטופס</label><input type="text" value="' + esc(form.name) + '" onchange="updateFormName(this.value)"></div>';
-    html += '<div class="form-group"><label>טבלה מקושרת</label><select onchange="updateFormTable(this.value)">';
+    // Canvas (main area)
+    html += '<div class="canvas" id="formCanvas">';
+
+    // Form info bar
+    html += '<div class="canvas-info-bar">';
+    html += '<div class="form-group" style="flex:1;margin:0"><label style="font-size:11px;color:var(--muted)">שם הטופס</label><input type="text" value="' + esc(form.name) + '" onchange="updateFormName(this.value)" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;width:100%"></div>';
+    html += '<div class="form-group" style="flex:1;margin:0"><label style="font-size:11px;color:var(--muted)">טבלה מקושרת</label><select onchange="updateFormTable(this.value)" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;width:100%">';
     DB.tables.forEach(function(t) {
         html += '<option value="' + t.id + '"' + (form.tableId === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>';
     });
     html += '</select></div>';
-    html += '</div></div></div>';
+    html += '</div>';
 
-    // Steps
-    html += '<div class="card"><div class="card-header"><h3>שלבים (' + form.steps.length + ')</h3>';
-    html += '<button class="btn btn-primary btn-sm" onclick="openModal(\'stepModal\')">+ שלב חדש</button></div>';
-    html += '<div class="card-body">';
-
+    // Blocks canvas
     if (form.steps.length === 0) {
-        html += '<div class="empty-state" style="padding:30px"><p>אין שלבים. הוסף שלב ראשון.</p></div>';
+        html += '<div class="empty-state" style="padding:60px"><div class="icon">&#128295;</div><p>לחץ על כלי בסרגל הצדדי להוספת בלוק ראשון</p></div>';
     } else {
-        html += '<div class="step-list">';
-        form.steps.forEach(function(step, idx) {
-            html += renderStepCard(step, idx, form, table);
-        });
-        html += '</div>';
+        html += renderCanvasBlocks(form, table);
     }
 
-    html += '</div></div>';
+    html += '</div>'; // end canvas
+
+    // Tool palette (left side = right in RTL)
+    html += '<div class="tool-palette">';
+    html += '<div class="tool-palette-title">&#128295; כלים</div>';
+    html += '<button class="tool-btn" style="border-color:#3b82f6" onclick="addCanvasBlock(\'display_data\')"><span class="tool-icon">&#128266;</span><span class="tool-label">השמעת נתון</span></button>';
+    html += '<button class="tool-btn" style="border-color:#10b981" onclick="addCanvasBlock(\'collect_input\')"><span class="tool-icon">&#127908;</span><span class="tool-label">קליטת נתון</span></button>';
+    html += '<button class="tool-btn" style="border-color:#f59e0b" onclick="addCanvasBlock(\'display_data_cond\')"><span class="tool-icon">&#128256;</span><span class="tool-label">תנאי</span></button>';
+    html += '<button class="tool-btn" style="border-color:#6c757d" onclick="addCanvasBlock(\'auto_capture\')"><span class="tool-icon">&#128268;</span><span class="tool-label">קליטה אוטומטית</span></button>';
+    html += '<button class="tool-btn" style="border-color:#f72585" onclick="addCanvasBlock(\'playback\')"><span class="tool-icon">&#128361;</span><span class="tool-label">סיכום</span></button>';
     html += '</div>';
+
+    html += '</div>'; // end canvas-container
 
     document.getElementById('content').innerHTML = html;
 
-    // Restore open step
-    if (openStepIdx >= 0) {
-        var el = document.getElementById('step_' + openStepIdx);
-        if (el) el.classList.add('open');
+    // Re-open block editor if was open
+    if (editingBlockIdx >= 0 && editingBlockIdx < form.steps.length) {
+        openBlockEditor(editingBlockIdx);
     }
 }
 
-function renderStepCard(step, idx, form, table) {
-    var cols = table ? table.columns : [];
+// ============ CANVAS RENDERING ============
+function renderCanvasBlocks(form, table) {
+    var html = '';
+    var rows = [];
+    var currentRow = null;
+
+    form.steps.forEach(function(step, idx) {
+        var rowType = getBlockRowType(step);
+        if (!currentRow || currentRow.type !== rowType) {
+            currentRow = { type: rowType, blocks: [] };
+            rows.push(currentRow);
+        }
+        currentRow.blocks.push({ step: step, idx: idx });
+    });
+
+    rows.forEach(function(row, ri) {
+        var rowClass = 'row-' + ({ display_data: 'display', collect_input: 'input', auto_capture: 'auto', playback: 'playback', condition: 'condition' }[row.type] || 'display');
+        var rowLabel = { display_data: 'השמעת נתון', collect_input: 'קליטת נתון', auto_capture: 'קליטה אוטומטית', playback: 'סיכום', condition: 'תנאי' }[row.type] || '';
+        var labelColor = { display_data: '#3b82f6', collect_input: '#10b981', auto_capture: '#6c757d', playback: '#f72585', condition: '#f59e0b' }[row.type] || '#666';
+
+        html += '<div class="canvas-row ' + rowClass + '">';
+        html += '<span class="row-label" style="color:' + labelColor + ';border-color:' + labelColor + '">' + rowLabel + '</span>';
+
+        row.blocks.forEach(function(b, bi) {
+            if (bi > 0) html += '<span class="block-connector">&#9654;</span>';
+            html += renderBlockCube(b.step, b.idx, form);
+        });
+
+        html += '</div>';
+        if (ri < rows.length - 1) html += '<div class="row-connector">&#9660;</div>';
+    });
+
+    return html;
+}
+
+function getBlockRowType(step) {
+    if (step.type === 'display_data' && step.conditional) return 'condition';
+    return step.type;
+}
+
+function renderBlockCube(step, idx, form) {
+    var type = step.type;
+    var isCondition = type === 'display_data' && step.conditional;
+    var icon = isCondition ? '&#128256;' : ({ auto_capture: '&#128268;', display_data: '&#128266;', collect_input: '&#127908;', playback: '&#128361;' }[type] || '&#9733;');
+    var numBg = isCondition ? '#f59e0b' : ({ auto_capture: '#6c757d', display_data: '#3b82f6', collect_input: '#10b981', playback: '#f72585' }[type] || '#666');
+    var borderColor = numBg;
+
+    // Build summary
+    var summary = '';
+    if (type === 'display_data' && !isCondition) {
+        var segs = step.segments || [];
+        if (segs.length > 0) {
+            summary = segs.map(function(s) {
+                if (s.type === 'text') return s.text || '';
+                if (s.type === 'column') return '{' + (s.columnName || '') + '}';
+                return '[[' + (s.recName || '') + ']]';
+            }).join(' ');
+            if (summary.length > 35) summary = summary.substring(0, 35) + '...';
+        }
+    } else if (type === 'display_data' && isCondition) {
+        var conds = step.conditions || [];
+        summary = conds.length + ' תנאים';
+    } else if (type === 'collect_input') {
+        summary = step.promptText || step.promptFile || '';
+        if (summary.length > 30) summary = summary.substring(0, 30) + '...';
+    } else if (type === 'auto_capture') {
+        var fieldNames = { phone: 'טלפון', caller_id: 'מזהה', call_id: 'שיחה', dialed_number: 'מספר' };
+        summary = fieldNames[step.systemField] || '';
+    }
+
+    var html = '<div class="block-cube" style="border-color:' + borderColor + '">';
+    html += '<div class="block-num" style="background:' + numBg + '">' + (idx + 1) + '</div>';
+    html += '<div class="block-icon">' + icon + '</div>';
+    html += '<div class="block-name">' + esc(step.name) + '</div>';
+    if (summary) html += '<div class="block-summary">' + esc(summary) + '</div>';
+    html += '<div class="block-actions">';
+    html += '<button class="block-act" onclick="openBlockEditor(' + idx + ')" title="עריכה">&#9998;</button>';
+    html += '<button class="block-act" onclick="openBlockSettings(' + idx + ')" title="הגדרות">&#9881;</button>';
+    html += '<button class="block-act del-act" onclick="deleteStep(' + idx + ')" title="מחק">&#10005;</button>';
+    html += '</div>';
+    html += '</div>';
+    return html;
+}
+
+function addCanvasBlock(type) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+
+    var isCondition = type === 'display_data_cond';
+    var actualType = isCondition ? 'display_data' : type;
+
+    var step = { id: genId(), type: actualType, name: '' };
+
+    if (actualType === 'auto_capture') {
+        step.name = 'קליטה אוטומטית';
+        step.systemField = 'phone';
+        step.targetColumn = '';
+    } else if (actualType === 'display_data') {
+        step.name = isCondition ? 'תנאי' : 'השמעת נתון';
+        step.lookupColumn = '';
+        step.segments = [];
+        step.conditional = isCondition;
+        step.conditions = isCondition ? [{ value: '', segments: [] }] : [];
+    } else if (actualType === 'collect_input') {
+        step.name = 'קלט חדש';
+        step.promptType = 'tts';
+        step.promptText = '';
+        step.promptFile = '';
+        step.inputType = 'dtmf';
+        step.targetColumn = '';
+        step.options = [{ key: '1', label: '', value: '' }, { key: '2', label: '', value: '' }];
+    } else if (actualType === 'playback') {
+        step.name = 'סיכום';
+        step.ttsTemplate = '';
+    }
+
+    form.steps.push(step);
+    saveDB();
+
+    editingBlockIdx = form.steps.length - 1;
+    editForm(editingFormId);
+}
+
+function openBlockEditor(idx) {
+    editingBlockIdx = idx;
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form || idx >= form.steps.length) return;
+    var table = DB.tables.find(function(t) { return t.id === form.tableId; });
+    var step = form.steps[idx];
+
     var typeName = { auto_capture: 'קליטה אוטומטית', display_data: 'השמעת נתון', collect_input: 'קלט מהמשתמש', playback: 'סיכום' }[step.type];
-    var typeClass = { auto_capture: 'auto', display_data: 'display', collect_input: 'input', playback: 'playback' }[step.type];
+    if (step.type === 'display_data' && step.conditional) typeName = 'תנאי';
+    document.getElementById('blockEditorTitle').innerHTML = '&#9998; ' + typeName + ' \u2014 ' + esc(step.name);
+    document.getElementById('blockEditorBody').innerHTML = renderBlockEditorContent(step, idx, form, table);
+    openModal('blockEditorModal');
+}
 
-    var html = '<div class="step-card" id="step_' + idx + '">';
-    html += '<div class="step-header" onclick="toggleStep(' + idx + ')">';
-    html += '<div class="step-num ' + typeClass + '">' + (idx + 1) + '</div>';
-    html += '<div class="step-title">' + esc(step.name) + '</div>';
-    html += '<span class="step-type-badge ' + typeClass + '">' + typeName + '</span>';
-    html += '<div class="step-actions">';
-    if (idx > 0) html += '<button class="btn btn-icon btn-secondary btn-sm" onclick="event.stopPropagation();moveStep(' + idx + ',-1)" title="הזז למעלה">&#9650;</button>';
-    if (idx < form.steps.length - 1) html += '<button class="btn btn-icon btn-secondary btn-sm" onclick="event.stopPropagation();moveStep(' + idx + ',1)" title="הזז למטה">&#9660;</button>';
-    html += '<button class="btn btn-icon btn-danger btn-sm" onclick="event.stopPropagation();deleteStep(' + idx + ')" title="מחק">&#10005;</button>';
-    html += '</div></div>';
+function openBlockSettings(idx) {
+    // Same as block editor - settings are integrated
+    openBlockEditor(idx);
+}
 
-    // Step body
-    html += '<div class="step-body">';
+function closeBlockEditor() {
+    editingBlockIdx = -1;
+    closeModal('blockEditorModal');
+    // Refresh canvas to show any changes
+    if (editingFormId) editForm(editingFormId);
+}
 
-    html += '<div class="form-row"><div class="form-group"><label>שם השלב</label><input type="text" value="' + esc(step.name) + '" onchange="updateStep(' + idx + ',\'name\',this.value)"></div></div>';
+function renderBlockEditorContent(step, idx, form, table) {
+    var cols = table ? table.columns : [];
+    var html = '';
+
+    html += '<div class="form-group" style="margin-bottom:14px"><label>שם הבלוק</label><input type="text" value="' + esc(step.name) + '" onchange="updateStep(' + idx + ',\'name\',this.value)" style="width:100%"></div>';
 
     if (step.type === 'auto_capture') {
         html += '<div class="form-row">';
@@ -1407,7 +1732,6 @@ function renderStepCard(step, idx, form, table) {
         html += '<small style="color:var(--muted)">השתמש ב-{שם שדה} להכנסת ערכים</small></div></div>';
     }
 
-    html += '</div></div>';
     return html;
 }
 
@@ -1448,9 +1772,15 @@ function addStep(type) {
 }
 
 function deleteStep(idx) {
-    if (!confirm('למחוק את השלב?')) return;
+    if (!confirm('למחוק את הבלוק?')) return;
     var form = DB.forms.find(function(f) { return f.id === editingFormId; });
     if (!form) return;
+    if (editingBlockIdx === idx) {
+        editingBlockIdx = -1;
+        closeModal('blockEditorModal');
+    } else if (editingBlockIdx > idx) {
+        editingBlockIdx--;
+    }
     form.steps.splice(idx, 1);
     saveDB();
     editForm(editingFormId);
@@ -1483,6 +1813,13 @@ function updateStep(idx, key, val) {
     saveDB();
     // Re-render if type-changing fields
     if (key === 'promptType' || key === 'inputType') editForm(editingFormId);
+    // Update modal title if name changed
+    if (key === 'name' && editingBlockIdx === idx) {
+        var step = form.steps[idx];
+        var typeName = { auto_capture: 'קליטה אוטומטית', display_data: 'השמעת נתון', collect_input: 'קלט מהמשתמש', playback: 'סיכום' }[step.type];
+        if (step.type === 'display_data' && step.conditional) typeName = 'תנאי';
+        document.getElementById('blockEditorTitle').innerHTML = '&#9998; ' + typeName + ' — ' + esc(val);
+    }
 }
 
 function updateFormName(val) {
