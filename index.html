@@ -660,33 +660,56 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     border: 1px solid var(--border);
     align-items: flex-end;
 }
-.canvas-row {
+.canvas-flow {
     display: flex;
-    gap: 14px;
-    padding: 22px 16px 14px;
-    margin-bottom: 6px;
-    border-radius: 12px;
+    gap: 12px;
+    padding: 16px;
     flex-wrap: wrap;
-    position: relative;
-    min-height: 80px;
     align-items: flex-start;
+    background: rgba(255,255,255,0.6);
+    border-radius: 14px;
+    border: 2px solid var(--border);
+    min-height: 100px;
 }
-.canvas-row.row-display { background: rgba(37,99,235,0.05); border: 1px dashed rgba(37,99,235,0.2); }
-.canvas-row.row-input { background: rgba(5,150,105,0.05); border: 1px dashed rgba(5,150,105,0.2); }
-.canvas-row.row-condition { background: rgba(245,158,11,0.05); border: 1px dashed rgba(245,158,11,0.2); }
-.canvas-row.row-auto { background: rgba(108,117,125,0.05); border: 1px dashed rgba(108,117,125,0.2); }
-.canvas-row.row-playback { background: rgba(247,37,133,0.05); border: 1px dashed rgba(247,37,133,0.2); }
-.row-label {
-    position: absolute;
-    top: -10px;
-    right: 16px;
-    background: #fff;
-    padding: 2px 10px;
-    border-radius: 4px;
+.flow-break {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0;
+}
+.flow-break::before, .flow-break::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #ddd;
+}
+.flow-break-icon {
     font-size: 11px;
     font-weight: 700;
+    color: var(--muted);
+    white-space: nowrap;
+    padding: 3px 10px;
+    background: #f0f1f6;
+    border-radius: 12px;
+    border: 1px solid #ddd;
 }
-.row-connector { text-align: center; margin: -2px 0; font-size: 20px; color: #bbb; line-height: 1; }
+.condition-branches {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-right: 4px;
+    align-self: center;
+}
+.branch-tag {
+    font-size: 10px;
+    padding: 3px 8px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 6px;
+    border: 1px solid #fcd34d;
+    font-weight: 600;
+}
 .block-cube {
     width: 140px;
     min-height: 140px;
@@ -1312,41 +1335,37 @@ function editForm(id) {
 // ============ CANVAS RENDERING ============
 function renderCanvasBlocks(form, table) {
     var html = '';
-    var rows = [];
-    var currentRow = null;
+
+    // Single flow container - all blocks on one canvas
+    html += '<div class="canvas-flow">';
 
     form.steps.forEach(function(step, idx) {
-        var rowType = getBlockRowType(step);
-        if (!currentRow || currentRow.type !== rowType) {
-            currentRow = { type: rowType, blocks: [] };
-            rows.push(currentRow);
+        var isCondition = step.type === 'display_data' && step.conditional;
+        var isCollectDTMF = step.type === 'collect_input' && step.inputType === 'dtmf';
+
+        // Conditions and DTMF options break to a new line
+        if (idx > 0 && (isCondition || isCollectDTMF)) {
+            html += '</div>'; // close current flow
+            html += '<div class="flow-break"><span class="flow-break-icon">' + (isCondition ? '&#128256; תנאי' : '&#127908; קלט') + '</span></div>';
+            html += '<div class="canvas-flow">';
+        } else if (idx > 0) {
+            html += '<span class="block-connector">&#9654;</span>';
         }
-        currentRow.blocks.push({ step: step, idx: idx });
+
+        html += renderBlockCube(step, idx, form);
+
+        // After a condition block, show branch preview
+        if (isCondition && step.conditions && step.conditions.length > 0) {
+            html += '<div class="condition-branches">';
+            step.conditions.forEach(function(cond, ci) {
+                html += '<span class="branch-tag">' + (cond.value ? esc(cond.value) : '...') + '</span>';
+            });
+            html += '</div>';
+        }
     });
 
-    rows.forEach(function(row, ri) {
-        var rowClass = 'row-' + ({ display_data: 'display', collect_input: 'input', auto_capture: 'auto', playback: 'playback', condition: 'condition' }[row.type] || 'display');
-        var rowLabel = { display_data: 'השמעת נתון', collect_input: 'קליטת נתון', auto_capture: 'קליטה אוטומטית', playback: 'סיכום', condition: 'תנאי' }[row.type] || '';
-        var labelColor = { display_data: '#3b82f6', collect_input: '#10b981', auto_capture: '#6c757d', playback: '#f72585', condition: '#f59e0b' }[row.type] || '#666';
-
-        html += '<div class="canvas-row ' + rowClass + '">';
-        html += '<span class="row-label" style="color:' + labelColor + ';border-color:' + labelColor + '">' + rowLabel + '</span>';
-
-        row.blocks.forEach(function(b, bi) {
-            if (bi > 0) html += '<span class="block-connector">&#9654;</span>';
-            html += renderBlockCube(b.step, b.idx, form);
-        });
-
-        html += '</div>';
-        if (ri < rows.length - 1) html += '<div class="row-connector">&#9660;</div>';
-    });
-
+    html += '</div>'; // close canvas-flow
     return html;
-}
-
-function getBlockRowType(step) {
-    if (step.type === 'display_data' && step.conditional) return 'condition';
-    return step.type;
 }
 
 function renderBlockCube(step, idx, form) {
