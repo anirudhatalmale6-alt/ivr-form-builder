@@ -737,15 +737,57 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 }
 .track-row {
     display: flex;
-    gap: 10px;
-    padding: 12px 10px;
-    align-items: center;
+    flex-direction: column;
     border-bottom: 1px solid rgba(255,255,255,0.06);
-    min-height: 70px;
     position: relative;
 }
 .track-row:last-child { border-bottom: none; }
 .track-row:hover { background: rgba(255,255,255,0.02); }
+.track-row-header {
+    display: flex;
+    gap: 10px;
+    padding: 12px 10px;
+    align-items: center;
+    min-height: 70px;
+    cursor: default;
+}
+.track-row-toggle {
+    width: 22px; height: 22px;
+    border-radius: 5px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.4);
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    font-family: inherit;
+}
+.track-row-toggle:hover { background: rgba(255,255,255,0.15); color: #fff; }
+.track-row-toggle.toggle-dtmf { border-color: rgba(16,185,129,0.4); color: #6ee7b7; }
+.track-row-toggle.toggle-cond { border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+.track-row-toggle.toggle-both { border-color: rgba(139,92,246,0.4); color: #c4b5fd; }
+.track-row-toggle .toggle-arrow {
+    font-size: 8px;
+    transition: transform 0.2s;
+}
+.track-row.expanded .track-row-toggle .toggle-arrow { transform: rotate(180deg); }
+.track-row-drawer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+.track-row.expanded .track-row-drawer { max-height: 400px; }
+.track-row-drawer-inner {
+    padding: 4px 10px 12px 38px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
 .track-label {
     writing-mode: horizontal-tb;
     font-size: 10px;
@@ -807,10 +849,8 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 }
 /* Block Node (compact rectangle) */
 .block-wrapper {
-    display: flex;
-    flex-direction: column;
+    display: inline-flex;
     align-items: center;
-    gap: 0;
 }
 .block-cube {
     min-width: 170px;
@@ -898,50 +938,21 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 .block-act.del-act:hover { background: rgba(239,71,111,0.6); color: #fff; }
 .block-connector { color: rgba(255,255,255,0.2); font-size: 14px; display: flex; align-items: center; user-select: none; }
 
-/* Block expand toggle */
-.block-expand-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    padding: 2px 7px;
-    border-radius: 0 0 6px 6px;
-    font-size: 9px;
+/* Row drawer block group label */
+.drawer-block-label {
+    font-size: 10px;
     font-weight: 600;
-    cursor: pointer;
-    border: none;
-    font-family: inherit;
-    transition: all 0.15s;
-    opacity: 0.7;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 2px;
 }
-.block-expand-btn:hover { opacity: 1; }
-.block-expand-btn.expand-dtmf {
-    background: rgba(16,185,129,0.25);
-    color: #6ee7b7;
-}
-.block-expand-btn.expand-cond {
-    background: rgba(245,158,11,0.25);
-    color: #fcd34d;
-}
-.block-expand-arrow {
-    font-size: 8px;
-    transition: transform 0.2s;
-}
-.block-wrapper.expanded .block-expand-arrow { transform: rotate(180deg); }
-
-/* Collapsible drawer */
-.block-drawer {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.25s ease;
-    width: 100%;
-}
-.block-wrapper.expanded .block-drawer { max-height: 300px; }
-.block-drawer-inner {
-    padding: 6px 4px 2px;
+.drawer-block-group {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 3px;
+    gap: 4px;
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
 }
 
 /* DTMF Branch Chips */
@@ -1637,35 +1648,51 @@ function renderCanvasBlocks(form, table) {
     html += '<div class="canvas-tracks">';
 
     rows.forEach(function(row, ri) {
-        html += '<div class="track-row">';
+        // Check if any block in this row has a drawer
+        var rowHasDtmf = false, rowHasCond = false;
+        row.blocks.forEach(function(b) {
+            if (b.step.type === 'collect_input' && b.step.inputType === 'dtmf' && b.step.options && b.step.options.length > 0) rowHasDtmf = true;
+            if (b.step.type === 'display_data' && b.step.conditional && b.step.conditions && b.step.conditions.length > 0) rowHasCond = true;
+        });
+        var rowHasDrawer = rowHasDtmf || rowHasCond;
+        var rowExpanded = row.blocks.some(function(b) { return b.step._expanded; });
+
+        html += '<div class="track-row' + (rowExpanded ? ' expanded' : '') + '">';
+        html += '<div class="track-row-header">';
         html += '<div class="track-label">' + (ri + 1) + '</div>';
         html += '<div class="track-blocks">';
 
         row.blocks.forEach(function(b, bi) {
             if (bi > 0) html += '<span class="block-connector">&#10132;</span>';
-
-            var isDtmf = b.step.type === 'collect_input' && b.step.inputType === 'dtmf' && b.step.options && b.step.options.length > 0;
-            var isCondition = b.step.type === 'display_data' && b.step.conditional;
-            var hasDrawer = isDtmf || (isCondition && b.step.conditions && b.step.conditions.length > 0);
-            var isExpanded = b.step._expanded;
-
-            html += '<div class="block-wrapper' + (isExpanded ? ' expanded' : '') + '">';
+            html += '<div class="block-wrapper">';
             html += renderBlockCube(b.step, b.idx, form);
+            html += '</div>';
+        });
 
-            // Toggle button for expandable drawer
-            if (hasDrawer) {
-                var expandClass = isDtmf ? 'expand-dtmf' : 'expand-cond';
-                var expandText = isDtmf ? (b.step.options.length + ' &#9742;') : (b.step.conditions.length + ' &#128256;');
-                html += '<button class="block-expand-btn ' + expandClass + '" onclick="event.stopPropagation();toggleBlockExpand(' + b.idx + ')">';
-                html += '<span class="block-expand-arrow">&#9660;</span> ' + expandText;
-                html += '</button>';
-            }
+        html += '</div>'; // track-blocks
 
-            // Collapsible drawer
-            if (hasDrawer) {
-                html += '<div class="block-drawer"><div class="block-drawer-inner">';
+        // Row-level toggle button
+        if (rowHasDrawer) {
+            var toggleClass = (rowHasDtmf && rowHasCond) ? 'toggle-both' : rowHasDtmf ? 'toggle-dtmf' : 'toggle-cond';
+            var firstIdx = row.blocks[0].idx;
+            html += '<button class="track-row-toggle ' + toggleClass + '" onclick="event.stopPropagation();toggleRowExpand(' + firstIdx + ')" title="הרחב/כווץ שורה">';
+            html += '<span class="toggle-arrow">&#9660;</span>';
+            html += '</button>';
+        }
+
+        html += '</div>'; // track-row-header
+
+        // Row-level collapsible drawer
+        if (rowHasDrawer) {
+            html += '<div class="track-row-drawer"><div class="track-row-drawer-inner">';
+
+            row.blocks.forEach(function(b) {
+                var isDtmf = b.step.type === 'collect_input' && b.step.inputType === 'dtmf' && b.step.options && b.step.options.length > 0;
+                var isCondition = b.step.type === 'display_data' && b.step.conditional && b.step.conditions && b.step.conditions.length > 0;
 
                 if (isDtmf) {
+                    html += '<div class="drawer-block-group">';
+                    if (row.blocks.length > 1) html += '<div class="drawer-block-label">&#9742; ' + esc(b.step.name) + '</div>';
                     html += '<div class="dtmf-branches">';
                     b.step.options.forEach(function(opt) {
                         var action = opt.action || 'update_data';
@@ -1683,23 +1710,24 @@ function renderCanvasBlocks(form, table) {
                         html += '</div>';
                     });
                     html += '</div>';
+                    html += '</div>';
                 }
 
-                if (isCondition && b.step.conditions && b.step.conditions.length > 0) {
+                if (isCondition) {
+                    html += '<div class="drawer-block-group">';
+                    if (row.blocks.length > 1) html += '<div class="drawer-block-label">&#128256; ' + esc(b.step.name) + '</div>';
                     html += '<div class="cond-branches">';
                     b.step.conditions.forEach(function(cond) {
                         html += '<span class="cond-chip">' + (cond.value ? esc(cond.value) : '...') + '</span>';
                     });
                     html += '</div>';
+                    html += '</div>';
                 }
+            });
 
-                html += '</div></div>'; // drawer-inner, drawer
-            }
+            html += '</div></div>'; // drawer-inner, drawer
+        }
 
-            html += '</div>'; // block-wrapper
-        });
-
-        html += '</div>'; // track-blocks
         html += '</div>'; // track-row
     });
 
@@ -1786,11 +1814,15 @@ function toggleBlockRow(idx) {
     editForm(editingFormId);
 }
 
-// ============ BLOCK EXPAND/COLLAPSE ============
-function toggleBlockExpand(idx) {
+// ============ ROW EXPAND/COLLAPSE ============
+function toggleRowExpand(firstIdx) {
     var form = DB.forms.find(function(f) { return f.id === editingFormId; });
     if (!form) return;
-    form.steps[idx]._expanded = !form.steps[idx]._expanded;
+    var targetRow = form.steps[firstIdx].row || 0;
+    var anyExpanded = form.steps.some(function(s) { return (s.row || 0) === targetRow && s._expanded; });
+    form.steps.forEach(function(s) {
+        if ((s.row || 0) === targetRow) s._expanded = !anyExpanded;
+    });
     editForm(editingFormId);
 }
 
