@@ -788,6 +788,77 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 }
 .col-tool-popup-item:hover { background: rgba(59,130,246,0.25); }
 .col-tool-popup-item .col-num { color: #93c5fd; font-weight: 600; margin-left: 6px; }
+/* Tree View Overlay */
+.tree-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #12121e;
+    z-index: 9000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.tree-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    background: #1a1a2e;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    flex-shrink: 0;
+}
+.tree-header h3 { color: #fff; font-size: 16px; margin: 0; flex: 1; }
+.tree-close-btn {
+    padding: 6px 16px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+}
+.tree-close-btn:hover { background: rgba(255,255,255,0.15); }
+.tree-body {
+    flex: 1;
+    overflow: auto;
+    padding: 30px;
+    display: flex;
+    justify-content: center;
+}
+.tree-svg {
+    display: block;
+}
+/* Tree nodes */
+.tree-node {
+    cursor: default;
+}
+.tree-node rect {
+    rx: 8;
+    ry: 8;
+    stroke-width: 2;
+}
+.tree-node text {
+    font-family: inherit;
+    fill: #fff;
+}
+.tree-edge {
+    fill: none;
+    stroke-width: 2;
+    marker-end: url(#arrowhead);
+}
+.tree-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    transition: all 0.15s;
+}
+.tree-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
 .canvas {
     flex: 1;
     background: linear-gradient(135deg, #f5f6fa 0%, #eaecf2 100%);
@@ -1658,9 +1729,10 @@ function editForm(id) {
     // Canvas (main area)
     html += '<div class="canvas" id="formCanvas">';
 
-    // Form info bar (name only - table is per-block now)
+    // Form info bar
     html += '<div class="canvas-info-bar">';
     html += '<div class="form-group" style="flex:1;margin:0"><label style="font-size:11px;color:var(--muted)">שם הטופס</label><input type="text" value="' + esc(form.name) + '" onchange="updateFormName(this.value)" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;width:100%"></div>';
+    html += '<button class="tree-btn" onclick="openTreeView()" title="תצוגת עץ">&#127795; עץ</button>';
     html += '</div>';
 
     // Blocks canvas
@@ -2121,6 +2193,145 @@ function addCondVarSeg(stepIdx, condIdx, refStepId) {
     cond.segments.push({ type: 'variable', refStepId: refStepId });
     saveDB();
     editForm(editingFormId);
+}
+
+// ============ TREE VIEW ============
+function openTreeView() {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form || form.steps.length === 0) return;
+
+    var steps = form.steps;
+    var nodeW = 160, nodeH = 50, gapX = 40, gapY = 70;
+
+    // Build adjacency: each node can connect to next, or via nextAction/DTMF goto/condition endAction
+    var nodes = [];
+    var edges = [];
+
+    steps.forEach(function(step, i) {
+        var typeColors = { auto_capture: '#6c757d', display_data: '#3b82f6', collect_input: '#10b981', playback: '#f72585' };
+        var color = (step.type === 'display_data' && step.conditional) ? '#f59e0b' : (typeColors[step.type] || '#666');
+        var icons = { auto_capture: '🔌', display_data: '🔊', collect_input: '🎤', playback: '📹' };
+        var icon = (step.type === 'display_data' && step.conditional) ? '🔀' : (icons[step.type] || '⭐');
+        nodes.push({ id: step.id, idx: i, name: step.name, color: color, icon: icon, step: step, x: 0, y: 0 });
+    });
+
+    // Layout: simple top-to-bottom with branches
+    // Main flow goes down; branches go to the side
+    var col = 0, row = 0;
+    var positions = {};
+    var maxCol = 0;
+
+    // First pass: lay out main flow vertically
+    nodes.forEach(function(n, i) {
+        n.x = 0;
+        n.y = i;
+        positions[n.id] = n;
+    });
+
+    // Build edges
+    steps.forEach(function(step, i) {
+        var nextIdx = i + 1;
+
+        // Default flow: next block
+        if (!step.nextAction || step.nextAction === '') {
+            if (nextIdx < steps.length) {
+                edges.push({ from: step.id, to: steps[nextIdx].id, label: '', color: 'rgba(255,255,255,0.25)', type: 'flow' });
+            }
+        } else if (step.nextAction === 'goto_block' && step.nextTarget) {
+            edges.push({ from: step.id, to: step.nextTarget, label: 'מעבר', color: '#3b82f6', type: 'goto' });
+        } else if (step.nextAction === 'activate_module') {
+            // Module - no internal target, just label
+        }
+
+        // DTMF options with goto_block
+        if (step.type === 'collect_input' && step.options) {
+            step.options.forEach(function(opt) {
+                if (opt.action === 'goto_block' && opt.gotoBlockId) {
+                    edges.push({ from: step.id, to: opt.gotoBlockId, label: opt.key + (opt.label ? ': ' + opt.label : ''), color: '#10b981', type: 'dtmf' });
+                }
+            });
+        }
+
+        // Conditions with goto_block
+        if (step.type === 'display_data' && step.conditional && step.conditions) {
+            step.conditions.forEach(function(cond) {
+                if (cond.endAction === 'goto_block' && cond.endTarget) {
+                    edges.push({ from: step.id, to: cond.endTarget, label: cond.value || '?', color: '#f59e0b', type: 'cond' });
+                }
+            });
+        }
+    });
+
+    // Calculate SVG dimensions
+    var svgW = nodeW + gapX * 2 + 300; // extra space for side branches
+    var svgH = nodes.length * (nodeH + gapY) + gapY;
+
+    // Position nodes
+    nodes.forEach(function(n, i) {
+        n.px = svgW / 2 - nodeW / 2;
+        n.py = gapY + i * (nodeH + gapY);
+    });
+
+    // Build SVG
+    var svg = '<svg class="tree-svg" width="' + svgW + '" height="' + svgH + '" xmlns="http://www.w3.org/2000/svg">';
+    svg += '<defs><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="rgba(255,255,255,0.4)" /></marker></defs>';
+
+    // Draw edges
+    edges.forEach(function(e) {
+        var fromNode = positions[e.from];
+        var toNode = positions[e.to];
+        if (!fromNode || !toNode) return;
+        var fromN = nodes.find(function(n) { return n.id === e.from; });
+        var toN = nodes.find(function(n) { return n.id === e.to; });
+        if (!fromN || !toN) return;
+
+        var x1 = fromN.px + nodeW / 2;
+        var y1 = fromN.py + nodeH;
+        var x2 = toN.px + nodeW / 2;
+        var y2 = toN.py;
+
+        if (e.type === 'flow') {
+            // Straight down
+            svg += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + e.color + '" stroke-width="2" marker-end="url(#arrowhead)" />';
+        } else {
+            // Curved branch (to the side)
+            var midY = (y1 + y2) / 2;
+            var offX = e.type === 'dtmf' ? -80 : e.type === 'cond' ? 80 : -60;
+            // If going backwards (up), curve more
+            if (y2 <= y1) offX = offX > 0 ? 140 : -140;
+            svg += '<path d="M' + x1 + ',' + y1 + ' C' + (x1 + offX) + ',' + midY + ' ' + (x2 + offX) + ',' + midY + ' ' + x2 + ',' + y2 + '" stroke="' + e.color + '" stroke-width="2" fill="none" stroke-dasharray="' + (e.type === 'flow' ? '' : '6,3') + '" marker-end="url(#arrowhead)" />';
+            // Label on edge
+            if (e.label) {
+                var lx = (x1 + x2) / 2 + offX * 0.6;
+                var ly = midY - 4;
+                svg += '<text x="' + lx + '" y="' + ly + '" fill="' + e.color + '" font-size="10" font-weight="600" text-anchor="middle" font-family="inherit">' + e.label + '</text>';
+            }
+        }
+    });
+
+    // Draw nodes
+    nodes.forEach(function(n) {
+        svg += '<g class="tree-node">';
+        svg += '<rect x="' + n.px + '" y="' + n.py + '" width="' + nodeW + '" height="' + nodeH + '" fill="rgba(255,255,255,0.07)" stroke="' + n.color + '" />';
+        svg += '<text x="' + (n.px + nodeW - 10) + '" y="' + (n.py + 20) + '" fill="#fff" font-size="12" font-weight="600" text-anchor="end" font-family="inherit">' + n.icon + ' ' + (n.idx + 1) + '</text>';
+        var dispName = n.name.length > 16 ? n.name.substring(0, 16) + '...' : n.name;
+        svg += '<text x="' + (n.px + nodeW - 10) + '" y="' + (n.py + 38) + '" fill="rgba(255,255,255,0.7)" font-size="11" text-anchor="end" font-family="inherit">' + dispName + '</text>';
+        svg += '</g>';
+    });
+
+    svg += '</svg>';
+
+    // Create overlay
+    var overlay = document.createElement('div');
+    overlay.className = 'tree-overlay';
+    overlay.id = 'treeOverlay';
+    overlay.innerHTML = '<div class="tree-header"><h3>&#127795; תצוגת עץ — ' + form.name + '</h3><button class="tree-close-btn" onclick="closeTreeView()">&#10005; סגור</button></div><div class="tree-body">' + svg + '</div>';
+    document.body.appendChild(overlay);
+}
+
+function closeTreeView() {
+    var el = document.getElementById('treeOverlay');
+    if (el) el.remove();
 }
 
 function showColumnToolPicker(e) {
