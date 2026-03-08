@@ -805,87 +805,164 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     background: rgba(255,255,255,0.2);
     color: #fff;
 }
-.block-cube {
-    width: 130px;
-    min-height: 120px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 12px;
-    border: 2px solid rgba(255,255,255,0.12);
+/* Block Node (compact rectangle) */
+.block-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 12px 8px 8px;
+    gap: 0;
+}
+.block-cube {
+    min-width: 170px;
+    max-width: 280px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 10px;
+    border: 2px solid rgba(255,255,255,0.12);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 10px;
+    gap: 8px;
     position: relative;
     transition: all 0.25s;
     animation: blockPop 0.3s ease;
     color: #fff;
 }
 @keyframes blockPop {
-    from { transform: scale(0.85); opacity: 0; }
+    from { transform: scale(0.9); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
 }
 .block-cube:hover {
     border-color: rgba(255,255,255,0.35);
     background: rgba(255,255,255,0.12);
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 .block-cube .block-num {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    font-size: 11px;
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    font-size: 12px;
     font-weight: bold;
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
-.block-cube .block-icon { font-size: 28px; margin: 4px 0 3px; }
-.block-cube .block-name {
-    font-size: 11px;
-    font-weight: 600;
-    text-align: center;
-    color: #fff;
-    word-break: break-word;
-    line-height: 1.3;
+.block-cube .block-icon { font-size: 18px; flex-shrink: 0; }
+.block-info {
     flex: 1;
+    min-width: 0;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    gap: 1px;
 }
-.block-cube .block-summary {
-    font-size: 9px;
-    color: rgba(255,255,255,0.5);
-    text-align: center;
-    max-width: 120px;
+.block-cube .block-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.3;
+}
+.block-cube .block-summary {
+    font-size: 10px;
+    color: rgba(255,255,255,0.45);
     white-space: nowrap;
-    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .block-cube .block-actions {
     display: flex;
-    gap: 5px;
-    margin-top: 6px;
+    gap: 3px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
 }
+.block-cube:hover .block-actions { opacity: 1; }
 .block-act {
-    width: 26px; height: 26px;
-    border-radius: 6px;
+    width: 22px; height: 22px;
+    border-radius: 5px;
     border: 1px solid rgba(255,255,255,0.15);
     background: rgba(255,255,255,0.06);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    font-size: 10px;
     transition: all 0.2s;
     font-family: inherit;
     color: rgba(255,255,255,0.6);
 }
 .block-act:hover { background: rgba(255,255,255,0.2); color: #fff; }
 .block-act.del-act:hover { background: rgba(239,71,111,0.6); color: #fff; }
-.block-connector { color: #ccc; font-size: 18px; display: flex; align-items: center; user-select: none; }
+.block-connector { color: rgba(255,255,255,0.2); font-size: 14px; display: flex; align-items: center; user-select: none; }
+
+/* DTMF Branch Chips on Canvas */
+.dtmf-branches {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 4px 0 0;
+    max-width: 300px;
+}
+.dtmf-branch-connector {
+    width: 2px;
+    height: 6px;
+    background: rgba(255,255,255,0.15);
+    margin: 0 auto;
+}
+.dtmf-branch {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.8);
+    cursor: default;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+.dtmf-branch:hover { filter: brightness(1.2); }
+.dtmf-branch.br-update { background: rgba(16,185,129,0.2); border: 1px solid rgba(16,185,129,0.35); }
+.dtmf-branch.br-goto { background: rgba(59,130,246,0.2); border: 1px solid rgba(59,130,246,0.35); }
+.dtmf-branch.br-module { background: rgba(245,158,11,0.2); border: 1px solid rgba(245,158,11,0.35); }
+.dtmf-key-badge {
+    width: 18px; height: 18px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    color: #fff;
+    flex-shrink: 0;
+}
+.br-update .dtmf-key-badge { background: #10b981; }
+.br-goto .dtmf-key-badge { background: #3b82f6; }
+.br-module .dtmf-key-badge { background: #f59e0b; }
+.dtmf-branch-label { font-weight: 600; }
+.dtmf-branch-action { font-size: 11px; opacity: 0.7; }
+
+/* Condition chips on canvas */
+.cond-branches {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 4px 0 0;
+}
+.cond-chip {
+    padding: 3px 8px;
+    background: rgba(245,158,11,0.15);
+    border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #fbbf24;
+}
 
 /* Drag & Drop */
 .block-cube[draggable="true"] { cursor: grab; }
@@ -1530,18 +1607,47 @@ function renderCanvasBlocks(form, table) {
         html += '<div class="track-blocks">';
 
         row.blocks.forEach(function(b, bi) {
-            if (bi > 0) html += '<span class="block-connector" style="color:rgba(255,255,255,0.2)">&#9654;</span>';
+            if (bi > 0) html += '<span class="block-connector">&#10132;</span>';
+
+            html += '<div class="block-wrapper">';
             html += renderBlockCube(b.step, b.idx, form);
 
-            // Condition branch tags
-            var isCondition = b.step.type === 'display_data' && b.step.conditional;
-            if (isCondition && b.step.conditions && b.step.conditions.length > 0) {
-                html += '<div class="condition-branches">';
-                b.step.conditions.forEach(function(cond) {
-                    html += '<span class="branch-tag">' + (cond.value ? esc(cond.value) : '...') + '</span>';
+            // DTMF option branches (visual on canvas)
+            var isDtmf = b.step.type === 'collect_input' && b.step.inputType === 'dtmf' && b.step.options && b.step.options.length > 0;
+            if (isDtmf) {
+                html += '<div class="dtmf-branch-connector"></div>';
+                html += '<div class="dtmf-branches">';
+                b.step.options.forEach(function(opt) {
+                    var action = opt.action || 'update_data';
+                    var brClass = action === 'goto_block' ? 'br-goto' : action === 'activate_module' ? 'br-module' : 'br-update';
+                    var actIcon = action === 'goto_block' ? '&#10145;' : action === 'activate_module' ? '&#9881;' : '&#128203;';
+                    var label = opt.label || opt.value || '...';
+                    // For goto_block, show target name
+                    if (action === 'goto_block' && opt.gotoBlockId) {
+                        var target = form.steps.find(function(s) { return s.id === opt.gotoBlockId; });
+                        if (target) label = (opt.label || opt.key) + ' &#8594; ' + esc(target.name);
+                    }
+                    html += '<div class="dtmf-branch ' + brClass + '">';
+                    html += '<span class="dtmf-key-badge">' + esc(opt.key) + '</span>';
+                    html += '<span class="dtmf-branch-label">' + (action === 'goto_block' && opt.gotoBlockId ? label : esc(label)) + '</span>';
+                    html += '<span class="dtmf-branch-action">' + actIcon + '</span>';
+                    html += '</div>';
                 });
                 html += '</div>';
             }
+
+            // Condition branch chips
+            var isCondition = b.step.type === 'display_data' && b.step.conditional;
+            if (isCondition && b.step.conditions && b.step.conditions.length > 0) {
+                html += '<div class="dtmf-branch-connector"></div>';
+                html += '<div class="cond-branches">';
+                b.step.conditions.forEach(function(cond) {
+                    html += '<span class="cond-chip">' + (cond.value ? esc(cond.value) : '...') + '</span>';
+                });
+                html += '</div>';
+            }
+
+            html += '</div>'; // block-wrapper
         });
 
         html += '</div>'; // track-blocks
@@ -1590,18 +1696,19 @@ function renderBlockCube(step, idx, form) {
     var selClass = selectedBlocks.indexOf(idx) >= 0 ? ' selected' : '';
     var html = '<div class="block-cube' + selClass + '" style="border-color:' + borderColor + '" draggable="true" ondragstart="onBlockDragStart(' + idx + ',event)" ondragend="onBlockDragEnd(event)" ondragover="onBlockDragOver(' + idx + ',event)" ondragleave="onBlockDragLeave(event)" ondrop="onBlockDrop(' + idx + ',event)" onclick="toggleBlockSelect(' + idx + ',event)">';
     html += '<div class="block-num" style="background:' + numBg + '">' + (idx + 1) + '</div>';
-    // Row toggle button (move to new row / merge with previous row)
+    html += '<div class="block-icon">' + icon + '</div>';
+    html += '<div class="block-info">';
+    html += '<div class="block-name">' + esc(step.name) + '</div>';
+    if (summary) html += '<div class="block-summary">' + esc(summary) + '</div>';
+    html += '</div>';
+    html += '<div class="block-actions">';
+    html += '<button class="block-act" onclick="openBlockEditor(' + idx + ')" title="עריכה">&#9998;</button>';
+    html += '<button class="block-act del-act" onclick="deleteStep(' + idx + ')" title="מחק">&#10005;</button>';
+    html += '</div>';
+    // Row toggle button
     if (idx > 0) {
         html += '<button class="block-row-toggle" onclick="event.stopPropagation();toggleBlockRow(' + idx + ')" title="העבר לשורה חדשה / חבר לשורה הקודמת">&#8629;</button>';
     }
-    html += '<div class="block-icon">' + icon + '</div>';
-    html += '<div class="block-name">' + esc(step.name) + '</div>';
-    if (summary) html += '<div class="block-summary">' + esc(summary) + '</div>';
-    html += '<div class="block-actions">';
-    html += '<button class="block-act" onclick="openBlockEditor(' + idx + ')" title="עריכה">&#9998;</button>';
-    html += '<button class="block-act" onclick="openBlockSettings(' + idx + ')" title="הגדרות">&#9881;</button>';
-    html += '<button class="block-act del-act" onclick="deleteStep(' + idx + ')" title="מחק">&#10005;</button>';
-    html += '</div>';
     html += '</div>';
     return html;
 }
