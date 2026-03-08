@@ -898,44 +898,80 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 .block-act.del-act:hover { background: rgba(239,71,111,0.6); color: #fff; }
 .block-connector { color: rgba(255,255,255,0.2); font-size: 14px; display: flex; align-items: center; user-select: none; }
 
-/* DTMF Branch Chips on Canvas */
+/* Block expand toggle */
+.block-expand-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px;
+    border-radius: 0 0 6px 6px;
+    font-size: 9px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    transition: all 0.15s;
+    opacity: 0.7;
+}
+.block-expand-btn:hover { opacity: 1; }
+.block-expand-btn.expand-dtmf {
+    background: rgba(16,185,129,0.25);
+    color: #6ee7b7;
+}
+.block-expand-btn.expand-cond {
+    background: rgba(245,158,11,0.25);
+    color: #fcd34d;
+}
+.block-expand-arrow {
+    font-size: 8px;
+    transition: transform 0.2s;
+}
+.block-wrapper.expanded .block-expand-arrow { transform: rotate(180deg); }
+
+/* Collapsible drawer */
+.block-drawer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease;
+    width: 100%;
+}
+.block-wrapper.expanded .block-drawer { max-height: 300px; }
+.block-drawer-inner {
+    padding: 6px 4px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+/* DTMF Branch Chips */
 .dtmf-branches {
     display: flex;
-    gap: 4px;
+    gap: 3px;
     flex-wrap: wrap;
     justify-content: center;
-    padding: 4px 0 0;
-    max-width: 300px;
-}
-.dtmf-branch-connector {
-    width: 2px;
-    height: 6px;
-    background: rgba(255,255,255,0.15);
-    margin: 0 auto;
 }
 .dtmf-branch {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 10px;
+    gap: 3px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-size: 9px;
     color: rgba(255,255,255,0.8);
     cursor: default;
-    transition: background 0.2s;
     white-space: nowrap;
 }
-.dtmf-branch:hover { filter: brightness(1.2); }
-.dtmf-branch.br-update { background: rgba(16,185,129,0.2); border: 1px solid rgba(16,185,129,0.35); }
-.dtmf-branch.br-goto { background: rgba(59,130,246,0.2); border: 1px solid rgba(59,130,246,0.35); }
-.dtmf-branch.br-module { background: rgba(245,158,11,0.2); border: 1px solid rgba(245,158,11,0.35); }
+.dtmf-branch.br-update { background: rgba(16,185,129,0.2); border: 1px solid rgba(16,185,129,0.3); }
+.dtmf-branch.br-goto { background: rgba(59,130,246,0.2); border: 1px solid rgba(59,130,246,0.3); }
+.dtmf-branch.br-module { background: rgba(245,158,11,0.2); border: 1px solid rgba(245,158,11,0.3); }
 .dtmf-key-badge {
-    width: 18px; height: 18px;
-    border-radius: 5px;
+    width: 16px; height: 16px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: bold;
     color: #fff;
     flex-shrink: 0;
@@ -944,22 +980,21 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 .br-goto .dtmf-key-badge { background: #3b82f6; }
 .br-module .dtmf-key-badge { background: #f59e0b; }
 .dtmf-branch-label { font-weight: 600; }
-.dtmf-branch-action { font-size: 11px; opacity: 0.7; }
+.dtmf-branch-action { font-size: 10px; opacity: 0.7; }
 
-/* Condition chips on canvas */
+/* Condition chips */
 .cond-branches {
     display: flex;
-    gap: 4px;
+    gap: 3px;
     flex-wrap: wrap;
     justify-content: center;
-    padding: 4px 0 0;
 }
 .cond-chip {
-    padding: 3px 8px;
+    padding: 2px 7px;
     background: rgba(245,158,11,0.15);
-    border: 1px solid rgba(245,158,11,0.3);
-    border-radius: 6px;
-    font-size: 10px;
+    border: 1px solid rgba(245,158,11,0.25);
+    border-radius: 5px;
+    font-size: 9px;
     font-weight: 600;
     color: #fbbf24;
 }
@@ -1609,42 +1644,56 @@ function renderCanvasBlocks(form, table) {
         row.blocks.forEach(function(b, bi) {
             if (bi > 0) html += '<span class="block-connector">&#10132;</span>';
 
-            html += '<div class="block-wrapper">';
+            var isDtmf = b.step.type === 'collect_input' && b.step.inputType === 'dtmf' && b.step.options && b.step.options.length > 0;
+            var isCondition = b.step.type === 'display_data' && b.step.conditional;
+            var hasDrawer = isDtmf || (isCondition && b.step.conditions && b.step.conditions.length > 0);
+            var isExpanded = b.step._expanded;
+
+            html += '<div class="block-wrapper' + (isExpanded ? ' expanded' : '') + '">';
             html += renderBlockCube(b.step, b.idx, form);
 
-            // DTMF option branches (visual on canvas)
-            var isDtmf = b.step.type === 'collect_input' && b.step.inputType === 'dtmf' && b.step.options && b.step.options.length > 0;
-            if (isDtmf) {
-                html += '<div class="dtmf-branch-connector"></div>';
-                html += '<div class="dtmf-branches">';
-                b.step.options.forEach(function(opt) {
-                    var action = opt.action || 'update_data';
-                    var brClass = action === 'goto_block' ? 'br-goto' : action === 'activate_module' ? 'br-module' : 'br-update';
-                    var actIcon = action === 'goto_block' ? '&#10145;' : action === 'activate_module' ? '&#9881;' : '&#128203;';
-                    var label = opt.label || opt.value || '...';
-                    // For goto_block, show target name
-                    if (action === 'goto_block' && opt.gotoBlockId) {
-                        var target = form.steps.find(function(s) { return s.id === opt.gotoBlockId; });
-                        if (target) label = (opt.label || opt.key) + ' &#8594; ' + esc(target.name);
-                    }
-                    html += '<div class="dtmf-branch ' + brClass + '">';
-                    html += '<span class="dtmf-key-badge">' + esc(opt.key) + '</span>';
-                    html += '<span class="dtmf-branch-label">' + (action === 'goto_block' && opt.gotoBlockId ? label : esc(label)) + '</span>';
-                    html += '<span class="dtmf-branch-action">' + actIcon + '</span>';
-                    html += '</div>';
-                });
-                html += '</div>';
+            // Toggle button for expandable drawer
+            if (hasDrawer) {
+                var expandClass = isDtmf ? 'expand-dtmf' : 'expand-cond';
+                var expandText = isDtmf ? (b.step.options.length + ' &#9742;') : (b.step.conditions.length + ' &#128256;');
+                html += '<button class="block-expand-btn ' + expandClass + '" onclick="event.stopPropagation();toggleBlockExpand(' + b.idx + ')">';
+                html += '<span class="block-expand-arrow">&#9660;</span> ' + expandText;
+                html += '</button>';
             }
 
-            // Condition branch chips
-            var isCondition = b.step.type === 'display_data' && b.step.conditional;
-            if (isCondition && b.step.conditions && b.step.conditions.length > 0) {
-                html += '<div class="dtmf-branch-connector"></div>';
-                html += '<div class="cond-branches">';
-                b.step.conditions.forEach(function(cond) {
-                    html += '<span class="cond-chip">' + (cond.value ? esc(cond.value) : '...') + '</span>';
-                });
-                html += '</div>';
+            // Collapsible drawer
+            if (hasDrawer) {
+                html += '<div class="block-drawer"><div class="block-drawer-inner">';
+
+                if (isDtmf) {
+                    html += '<div class="dtmf-branches">';
+                    b.step.options.forEach(function(opt) {
+                        var action = opt.action || 'update_data';
+                        var brClass = action === 'goto_block' ? 'br-goto' : action === 'activate_module' ? 'br-module' : 'br-update';
+                        var actIcon = action === 'goto_block' ? '&#10145;' : action === 'activate_module' ? '&#9881;' : '&#128203;';
+                        var label = opt.label || opt.value || '...';
+                        if (action === 'goto_block' && opt.gotoBlockId) {
+                            var target = form.steps.find(function(s) { return s.id === opt.gotoBlockId; });
+                            if (target) label = (opt.label || opt.key) + ' &#8594; ' + esc(target.name);
+                        }
+                        html += '<div class="dtmf-branch ' + brClass + '">';
+                        html += '<span class="dtmf-key-badge">' + esc(opt.key) + '</span>';
+                        html += '<span class="dtmf-branch-label">' + (action === 'goto_block' && opt.gotoBlockId ? label : esc(label)) + '</span>';
+                        html += '<span class="dtmf-branch-action">' + actIcon + '</span>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                }
+
+                if (isCondition && b.step.conditions && b.step.conditions.length > 0) {
+                    html += '<div class="cond-branches">';
+                    b.step.conditions.forEach(function(cond) {
+                        html += '<span class="cond-chip">' + (cond.value ? esc(cond.value) : '...') + '</span>';
+                    });
+                    html += '</div>';
+                }
+
+                html += '</div></div>'; // drawer-inner, drawer
             }
 
             html += '</div>'; // block-wrapper
@@ -1734,6 +1783,14 @@ function toggleBlockRow(idx) {
         step.row = targetRow;
     }
     saveDB();
+    editForm(editingFormId);
+}
+
+// ============ BLOCK EXPAND/COLLAPSE ============
+function toggleBlockExpand(idx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[idx]._expanded = !form.steps[idx]._expanded;
     editForm(editingFormId);
 }
 
