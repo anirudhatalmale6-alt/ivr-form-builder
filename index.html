@@ -820,6 +820,47 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 .block-act.del-act:hover { background: rgba(239,71,111,0.6); color: #fff; }
 .block-connector { color: #ccc; font-size: 18px; display: flex; align-items: center; user-select: none; }
 
+/* Drag & Drop */
+.block-cube[draggable="true"] { cursor: grab; }
+.block-cube.dragging { opacity: 0.3; transform: scale(0.9) !important; cursor: grabbing; }
+.block-cube.drag-over-left { border-right: 4px solid #60a5fa !important; }
+.block-cube.drag-over-right { border-left: 4px solid #60a5fa !important; }
+.track-row.drag-row-over { background: rgba(96,165,250,0.08) !important; }
+
+/* Block Selection */
+.block-cube.selected { border-color: #fbbf24 !important; box-shadow: 0 0 0 3px rgba(251,191,36,0.35); }
+.canvas-selection-bar {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #292942;
+    border: 1px solid #fbbf24;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+.canvas-selection-bar .sel-count { font-size: 13px; font-weight: 600; color: #fbbf24; flex: 1; }
+.sel-action {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+.sel-action:hover { background: rgba(255,255,255,0.2); }
+.sel-action.paste-act { border-color: #10b981; color: #10b981; }
+.sel-action.paste-act:hover { background: rgba(16,185,129,0.15); }
+
+/* Variable Segment */
+.tl-seg.type-variable { background: #7c3aed; color: #fff; border: 1px solid #a78bfa; }
+.tl-btn.btn-var { color: #8b5cf6; border-color: #8b5cf6; }
+.tl-btn.btn-var:hover { background: #f5f3ff; }
+
 /* Responsive */
 @media (max-width: 768px) {
     .sidebar { width: 60px; }
@@ -1010,6 +1051,10 @@ var editingColIndex = -1;
 var editingRecId = null;
 var openStepIdx = -1;
 var editingBlockIdx = -1;
+var dragSrcIdx = -1;
+var selectedBlocks = [];
+var clipboard = [];
+var clipboardMode = '';
 var nextId = 1;
 
 function genId() { return 't' + (nextId++); }
@@ -1347,7 +1392,6 @@ function editForm(id) {
     html += '<button class="tool-btn" style="border-color:#10b981" onclick="addCanvasBlock(\'collect_input\')"><span class="tool-icon">&#127908;</span><span class="tool-label">קליטת נתון</span></button>';
     html += '<button class="tool-btn" style="border-color:#f59e0b" onclick="addCanvasBlock(\'display_data_cond\')"><span class="tool-icon">&#128256;</span><span class="tool-label">תנאי</span></button>';
     html += '<button class="tool-btn" style="border-color:#6c757d" onclick="addCanvasBlock(\'auto_capture\')"><span class="tool-icon">&#128268;</span><span class="tool-label">קליטה אוטומטית</span></button>';
-    html += '<button class="tool-btn" style="border-color:#f72585" onclick="addCanvasBlock(\'playback\')"><span class="tool-icon">&#128361;</span><span class="tool-label">סיכום</span></button>';
     html += '</div>';
 
     html += '</div>'; // end canvas-container
@@ -1395,7 +1439,23 @@ function renderCanvasBlocks(form, table) {
     // Sort rows by row number
     rows.sort(function(a, b) { return a.row - b.row; });
 
-    var html = '<div class="canvas-tracks">';
+    var html = '';
+
+    // Selection toolbar
+    if (selectedBlocks.length > 0) {
+        html += '<div class="canvas-selection-bar">';
+        html += '<span class="sel-count">' + selectedBlocks.length + ' נבחרו</span>';
+        html += '<button class="sel-action" onclick="event.stopPropagation();copyBlocks()">&#128203; העתק</button>';
+        html += '<button class="sel-action" onclick="event.stopPropagation();cutBlocks()">&#9986; גזור</button>';
+        html += '<button class="sel-action" onclick="event.stopPropagation();deleteSelectedBlocks()">&#10005; מחק</button>';
+        html += '<button class="sel-action" onclick="event.stopPropagation();clearSelection()">&#8634; ביטול</button>';
+        html += '</div>';
+    }
+    if (clipboard.length > 0) {
+        html += '<div style="margin-bottom:10px"><button class="sel-action paste-act" onclick="event.stopPropagation();pasteBlocks()" style="font-size:13px;padding:8px 16px">&#128203; הדבק ' + clipboard.length + ' בלוקים (' + (clipboardMode === 'cut' ? 'גזירה' : 'העתקה') + ')</button></div>';
+    }
+
+    html += '<div class="canvas-tracks">';
 
     rows.forEach(function(row, ri) {
         html += '<div class="track-row">';
@@ -1440,6 +1500,10 @@ function renderBlockCube(step, idx, form) {
             summary = segs.map(function(s) {
                 if (s.type === 'text') return s.text || '';
                 if (s.type === 'column') return '{' + (s.columnName || '') + '}';
+                if (s.type === 'variable') {
+                    var rs = form.steps.find(function(st) { return st.id === s.refStepId; });
+                    return '{' + (rs ? rs.name : '?') + '}';
+                }
                 return '[[' + (s.recName || '') + ']]';
             }).join(' ');
             if (summary.length > 35) summary = summary.substring(0, 35) + '...';
@@ -1455,7 +1519,8 @@ function renderBlockCube(step, idx, form) {
         summary = fieldNames[step.systemField] || '';
     }
 
-    var html = '<div class="block-cube" style="border-color:' + borderColor + '">';
+    var selClass = selectedBlocks.indexOf(idx) >= 0 ? ' selected' : '';
+    var html = '<div class="block-cube' + selClass + '" style="border-color:' + borderColor + '" draggable="true" ondragstart="onBlockDragStart(' + idx + ',event)" ondragend="onBlockDragEnd(event)" ondragover="onBlockDragOver(' + idx + ',event)" ondragleave="onBlockDragLeave(event)" ondrop="onBlockDrop(' + idx + ',event)" onclick="toggleBlockSelect(' + idx + ',event)">';
     html += '<div class="block-num" style="background:' + numBg + '">' + (idx + 1) + '</div>';
     // Row toggle button (move to new row / merge with previous row)
     if (idx > 0) {
@@ -1493,6 +1558,207 @@ function toggleBlockRow(idx) {
         var targetRow = prevStep.row;
         step.row = targetRow;
     }
+    saveDB();
+    editForm(editingFormId);
+}
+
+// ============ DRAG & DROP ============
+function onBlockDragStart(idx, e) {
+    dragSrcIdx = idx;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', idx);
+    setTimeout(function() {
+        var cubes = document.querySelectorAll('.block-cube');
+        if (cubes[idx]) cubes[idx].classList.add('dragging');
+    }, 0);
+}
+function onBlockDragEnd(e) {
+    dragSrcIdx = -1;
+    document.querySelectorAll('.block-cube').forEach(function(el) {
+        el.classList.remove('dragging', 'drag-over-left', 'drag-over-right');
+    });
+    document.querySelectorAll('.track-row').forEach(function(el) {
+        el.classList.remove('drag-row-over');
+    });
+}
+function onBlockDragOver(targetIdx, e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragSrcIdx === targetIdx) return;
+    var cube = e.currentTarget;
+    var rect = cube.getBoundingClientRect();
+    var midX = rect.left + rect.width / 2;
+    cube.classList.remove('drag-over-left', 'drag-over-right');
+    if (e.clientX < midX) {
+        cube.classList.add('drag-over-right'); // RTL: right side = before
+    } else {
+        cube.classList.add('drag-over-left');
+    }
+}
+function onBlockDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over-left', 'drag-over-right');
+}
+function onBlockDrop(targetIdx, e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (dragSrcIdx < 0 || dragSrcIdx === targetIdx) return;
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var step = form.steps.splice(dragSrcIdx, 1)[0];
+    // Adjust target index after removal
+    var insertIdx = targetIdx > dragSrcIdx ? targetIdx - 1 : targetIdx;
+    // Check drop side (RTL)
+    var cube = e.currentTarget;
+    var rect = cube.getBoundingClientRect();
+    var midX = rect.left + rect.width / 2;
+    if (e.clientX >= midX) insertIdx++; // after target in RTL
+    // Assign same row as target
+    step.row = form.steps[Math.min(insertIdx, form.steps.length - 1)] ? form.steps[Math.min(insertIdx, form.steps.length - 1)].row : 0;
+    form.steps.splice(insertIdx, 0, step);
+    dragSrcIdx = -1;
+    // Update selection indices
+    selectedBlocks = [];
+    saveDB();
+    editForm(editingFormId);
+}
+
+// ============ BLOCK SELECTION ============
+function toggleBlockSelect(idx, e) {
+    // Don't select when clicking action buttons
+    if (e.target.closest('.block-act') || e.target.closest('.block-row-toggle')) return;
+    e.stopPropagation();
+    if (e.ctrlKey || e.metaKey) {
+        // Toggle single
+        var pos = selectedBlocks.indexOf(idx);
+        if (pos >= 0) selectedBlocks.splice(pos, 1);
+        else selectedBlocks.push(idx);
+    } else if (e.shiftKey && selectedBlocks.length > 0) {
+        // Range select
+        var last = selectedBlocks[selectedBlocks.length - 1];
+        var from = Math.min(last, idx);
+        var to = Math.max(last, idx);
+        selectedBlocks = [];
+        for (var i = from; i <= to; i++) selectedBlocks.push(i);
+    } else {
+        // Single select toggle
+        if (selectedBlocks.length === 1 && selectedBlocks[0] === idx) {
+            selectedBlocks = [];
+        } else {
+            selectedBlocks = [idx];
+        }
+    }
+    // Re-render just the visual state
+    var cubes = document.querySelectorAll('.block-cube');
+    cubes.forEach(function(el, i) {
+        el.classList.toggle('selected', selectedBlocks.indexOf(i) >= 0);
+    });
+    // Update selection bar
+    editForm(editingFormId);
+}
+function clearSelection() {
+    selectedBlocks = [];
+    editForm(editingFormId);
+}
+function copyBlocks() {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form || selectedBlocks.length === 0) return;
+    clipboard = selectedBlocks.sort(function(a, b) { return a - b; }).map(function(i) {
+        return JSON.parse(JSON.stringify(form.steps[i]));
+    });
+    clipboardMode = 'copy';
+    selectedBlocks = [];
+    editForm(editingFormId);
+}
+function cutBlocks() {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form || selectedBlocks.length === 0) return;
+    var sorted = selectedBlocks.sort(function(a, b) { return a - b; });
+    clipboard = sorted.map(function(i) {
+        return JSON.parse(JSON.stringify(form.steps[i]));
+    });
+    clipboardMode = 'cut';
+    // Remove in reverse order
+    for (var i = sorted.length - 1; i >= 0; i--) {
+        form.steps.splice(sorted[i], 1);
+    }
+    selectedBlocks = [];
+    if (editingBlockIdx >= 0) { editingBlockIdx = -1; closeModal('blockEditorModal'); }
+    saveDB();
+    editForm(editingFormId);
+}
+function pasteBlocks() {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form || clipboard.length === 0) return;
+    ensureRows(form);
+    var lastRow = 0;
+    form.steps.forEach(function(s) { if (s.row > lastRow) lastRow = s.row; });
+    clipboard.forEach(function(block) {
+        var newBlock = JSON.parse(JSON.stringify(block));
+        newBlock.id = genId();
+        newBlock.row = lastRow;
+        form.steps.push(newBlock);
+    });
+    if (clipboardMode === 'cut') { clipboard = []; clipboardMode = ''; }
+    saveDB();
+    editForm(editingFormId);
+}
+function deleteSelectedBlocks() {
+    if (selectedBlocks.length === 0) return;
+    if (!confirm('למחוק ' + selectedBlocks.length + ' בלוקים?')) return;
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var sorted = selectedBlocks.sort(function(a, b) { return b - a; });
+    sorted.forEach(function(i) { form.steps.splice(i, 1); });
+    selectedBlocks = [];
+    if (editingBlockIdx >= 0) { editingBlockIdx = -1; closeModal('blockEditorModal'); }
+    saveDB();
+    editForm(editingFormId);
+}
+
+// Keyboard shortcuts for copy/cut/paste
+document.addEventListener('keydown', function(e) {
+    if (!editingFormId) return;
+    // Don't intercept when typing in inputs
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedBlocks.length > 0) { e.preventDefault(); copyBlocks(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'x' && selectedBlocks.length > 0) { e.preventDefault(); cutBlocks(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboard.length > 0) { e.preventDefault(); pasteBlocks(); }
+    if (e.key === 'Escape') { clearSelection(); }
+    if (e.key === 'Delete' && selectedBlocks.length > 0) { e.preventDefault(); deleteSelectedBlocks(); }
+});
+
+// ============ VARIABLE SEGMENTS ============
+function showVarPicker(stepIdx) {
+    var el = document.getElementById('varPicker_' + stepIdx);
+    var colEl = document.getElementById('colPicker_' + stepIdx);
+    var recEl = document.getElementById('recPicker_' + stepIdx);
+    if (colEl) colEl.style.display = 'none';
+    if (recEl) recEl.style.display = 'none';
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function addVarSegment(stepIdx, refStepId) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var step = form.steps[stepIdx];
+    if (!step.segments) step.segments = [];
+    step.segments.push({ type: 'variable', refStepId: refStepId });
+    saveDB();
+    editForm(editingFormId);
+}
+function showCondVarPicker(stepIdx, condIdx) {
+    var el = document.getElementById('condVarPicker_' + stepIdx + '_' + condIdx);
+    var colEl = document.getElementById('condColPicker_' + stepIdx + '_' + condIdx);
+    var recEl = document.getElementById('condRecPicker_' + stepIdx + '_' + condIdx);
+    if (colEl) colEl.style.display = 'none';
+    if (recEl) recEl.style.display = 'none';
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function addCondVarSeg(stepIdx, condIdx, refStepId) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var cond = form.steps[stepIdx].conditions[condIdx];
+    if (!cond.segments) cond.segments = [];
+    cond.segments.push({ type: 'variable', refStepId: refStepId });
     saveDB();
     editForm(editingFormId);
 }
@@ -1647,10 +1913,9 @@ function renderBlockEditorContent(step, idx, form, table) {
             }
             segs.forEach(function(seg, si) {
                 var segClass = 'type-' + seg.type;
-                var segIcon = seg.type === 'text' ? '&#128172;' : seg.type === 'column' ? '&#128202;' : '&#127908;';
+                var segIcon = seg.type === 'text' ? '&#128172;' : seg.type === 'column' ? '&#128202;' : seg.type === 'variable' ? '&#128279;' : '&#127908;';
 
                 if (seg.type === 'text') {
-                    // Inline editable text segment
                     html += '<div class="tl-seg ' + segClass + '">';
                     html += '<span class="seg-icon">' + segIcon + '</span>';
                     html += '<input type="text" class="seg-text-input" value="' + esc(seg.text || '') + '" placeholder="הקלד טקסט..." onchange="updateSegText(' + idx + ',' + si + ',this.value)" onclick="event.stopPropagation()">';
@@ -1667,6 +1932,15 @@ function renderBlockEditorContent(step, idx, form, table) {
                     html += '<button class="seg-mode-btn" onclick="event.stopPropagation();toggleSegMode(' + idx + ',' + si + ')" title="החלף בין TTS להקלטה מהמילון">' + modeIcon + ' ' + modeLabel + '</button>';
                     html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
                     html += '</div>';
+                } else if (seg.type === 'variable') {
+                    var refStep = form.steps.find(function(st) { return st.id === seg.refStepId; });
+                    var refName = refStep ? refStep.name : '?';
+                    var refIdx = refStep ? form.steps.indexOf(refStep) + 1 : '?';
+                    html += '<div class="tl-seg ' + segClass + '">';
+                    html += '<span class="seg-icon">' + segIcon + '</span>';
+                    html += '<span class="seg-label">{&#128203; ' + refIdx + ': ' + esc(refName) + '}</span>';
+                    html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
+                    html += '</div>';
                 } else {
                     html += '<div class="tl-seg ' + segClass + '" onclick="editSegment(' + idx + ',' + si + ',event)" title="לחץ לעריכה">';
                     html += '<span class="seg-icon">' + segIcon + '</span>';
@@ -1678,12 +1952,32 @@ function renderBlockEditorContent(step, idx, form, table) {
             });
             html += '</div>'; // end timeline-track
 
+            // Collect collect_input blocks for variable picker
+            var collectBlocks = [];
+            form.steps.forEach(function(s, si) {
+                if (s.type === 'collect_input') collectBlocks.push({ step: s, idx: si });
+            });
+
             // Add segment buttons
             html += '<div class="tl-controls">';
             html += '<button class="tl-btn btn-text" onclick="addSegment(' + idx + ',\'text\')">&#128172; + טקסט חופשי</button>';
             html += '<button class="tl-btn btn-col" onclick="showColPicker(' + idx + ')">&#128202; + ערך מעמודה</button>';
             html += '<button class="tl-btn btn-rec" onclick="showRecPicker(' + idx + ')">&#127908; + הקלטה</button>';
+            if (collectBlocks.length > 0) {
+                html += '<button class="tl-btn btn-var" onclick="showVarPicker(' + idx + ')">&#128279; + משתנה</button>';
+            }
             html += '</div>';
+
+            // Variable picker dropdown (hidden)
+            if (collectBlocks.length > 0) {
+                html += '<div id="varPicker_' + idx + '" style="display:none;margin-top:8px;padding:10px;background:#f5f3ff;border:1px solid #8b5cf6;border-radius:8px">';
+                html += '<label style="font-size:12px;font-weight:600;color:#7c3aed;display:block;margin-bottom:6px">בחר בלוק קליטת נתון:</label>';
+                html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+                collectBlocks.forEach(function(cb) {
+                    html += '<button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="addVarSegment(' + idx + ',\'' + cb.step.id + '\')">&#128203; ' + (cb.idx + 1) + ': ' + esc(cb.step.name) + '</button>';
+                });
+                html += '</div></div>';
+            }
 
             // Column picker dropdown (hidden)
             html += '<div id="colPicker_' + idx + '" style="display:none;margin-top:8px;padding:10px;background:#ecfdf5;border:1px solid #10b981;border-radius:8px">';
@@ -1740,7 +2034,7 @@ function renderBlockEditorContent(step, idx, form, table) {
                 var csegs = cond.segments || [];
                 csegs.forEach(function(seg, si) {
                     var segClass = 'type-' + seg.type;
-                    var segIcon = seg.type === 'text' ? '&#128172;' : seg.type === 'column' ? '&#128202;' : '&#127908;';
+                    var segIcon = seg.type === 'text' ? '&#128172;' : seg.type === 'column' ? '&#128202;' : seg.type === 'variable' ? '&#128279;' : '&#127908;';
                     if (seg.type === 'text') {
                         html += '<div class="tl-seg ' + segClass + '">';
                         html += '<span class="seg-icon">' + segIcon + '</span>';
@@ -1758,6 +2052,15 @@ function renderBlockEditorContent(step, idx, form, table) {
                         html += '<button class="seg-mode-btn" onclick="event.stopPropagation();toggleCondSegMode(' + idx + ',' + ci + ',' + si + ')">' + cModeIcon + ' ' + cModeLabel + '</button>';
                         html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
                         html += '</div>';
+                    } else if (seg.type === 'variable') {
+                        var cRefStep = form.steps.find(function(st) { return st.id === seg.refStepId; });
+                        var cRefName = cRefStep ? cRefStep.name : '?';
+                        var cRefIdx = cRefStep ? form.steps.indexOf(cRefStep) + 1 : '?';
+                        html += '<div class="tl-seg ' + segClass + '">';
+                        html += '<span class="seg-icon">' + segIcon + '</span>';
+                        html += '<span class="seg-label">{&#128203; ' + cRefIdx + ': ' + esc(cRefName) + '}</span>';
+                        html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
+                        html += '</div>';
                     } else {
                         html += '<div class="tl-seg ' + segClass + '" onclick="editCondSeg(' + idx + ',' + ci + ',' + si + ',event)" title="לחץ לעריכה">';
                         html += '<span class="seg-icon">' + segIcon + '</span>';
@@ -1769,10 +2072,18 @@ function renderBlockEditorContent(step, idx, form, table) {
                 });
                 if (csegs.length === 0) html += '<div style="color:#666;font-size:12px;padding:4px">ריק - הוסף בלוקים</div>';
                 html += '</div>';
+                // Collect collect_input blocks for variable picker
+                var condCollectBlocks = [];
+                form.steps.forEach(function(s, si) {
+                    if (s.type === 'collect_input') condCollectBlocks.push({ step: s, idx: si });
+                });
                 html += '<div class="tl-controls" style="margin-top:6px">';
                 html += '<button class="tl-btn btn-text btn-sm" onclick="addCondSegText(' + idx + ',' + ci + ')">&#128172; + טקסט</button>';
                 html += '<button class="tl-btn btn-col btn-sm" onclick="showCondColPicker(' + idx + ',' + ci + ')">&#128202; + עמודה</button>';
                 html += '<button class="tl-btn btn-rec btn-sm" onclick="showCondRecPicker(' + idx + ',' + ci + ')">&#127908; + הקלטה</button>';
+                if (condCollectBlocks.length > 0) {
+                    html += '<button class="tl-btn btn-var btn-sm" onclick="showCondVarPicker(' + idx + ',' + ci + ')">&#128279; + משתנה</button>';
+                }
                 html += '</div>';
                 // Condition column picker
                 html += '<div id="condColPicker_' + idx + '_' + ci + '" style="display:none;margin-top:6px;padding:8px;background:#ecfdf5;border:1px solid #10b981;border-radius:6px">';
@@ -1788,6 +2099,15 @@ function renderBlockEditorContent(step, idx, form, table) {
                     html += '<button class="btn btn-sm" style="background:#db2777;color:#fff;font-size:11px" onclick="addCondRecSeg(' + idx + ',' + ci + ',\'' + esc(r.name) + '\')">' + esc(r.name) + '</button>';
                 });
                 html += '</div></div>';
+                // Condition variable picker
+                if (condCollectBlocks.length > 0) {
+                    html += '<div id="condVarPicker_' + idx + '_' + ci + '" style="display:none;margin-top:6px;padding:8px;background:#f5f3ff;border:1px solid #8b5cf6;border-radius:6px">';
+                    html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+                    condCollectBlocks.forEach(function(cb) {
+                        html += '<button class="btn btn-sm" style="background:#7c3aed;color:#fff;font-size:11px" onclick="addCondVarSeg(' + idx + ',' + ci + ',\'' + cb.step.id + '\')">&#128203; ' + (cb.idx + 1) + ': ' + esc(cb.step.name) + '</button>';
+                    });
+                    html += '</div></div>';
+                }
                 html += '</div>';
             });
             html += '<button class="btn btn-sm btn-secondary" onclick="addCondition(' + idx + ')">+ תנאי</button>';
