@@ -751,6 +751,43 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 .tool-sub-btn:hover { background: rgba(59,130,246,0.15); }
 .tool-sub-btn .sub-icon { font-size: 14px; flex-shrink: 0; }
 .tool-sub-btn .sub-label { font-size: 9px; font-weight: 600; }
+/* Column tool picker popup */
+.col-tool-popup {
+    position: fixed;
+    z-index: 9999;
+    background: #1e1e2e;
+    border: 2px solid #3b82f6;
+    border-radius: 10px;
+    padding: 8px;
+    min-width: 160px;
+    max-height: 280px;
+    overflow-y: auto;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+.col-tool-popup-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #93c5fd;
+    padding: 4px 8px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 4px;
+}
+.col-tool-popup-item {
+    display: block;
+    width: 100%;
+    padding: 7px 10px;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 12px;
+    font-family: inherit;
+    text-align: right;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.col-tool-popup-item:hover { background: rgba(59,130,246,0.25); }
+.col-tool-popup-item .col-num { color: #93c5fd; font-weight: 600; margin-left: 6px; }
 .canvas {
     flex: 1;
     background: linear-gradient(135deg, #f5f6fa 0%, #eaecf2 100%);
@@ -1642,7 +1679,7 @@ function editForm(id) {
     html += '<div class="tool-group">';
     html += '<div class="tool-group-header"><span class="tool-icon">&#128266;</span> השמעת נתון</div>';
     html += '<button class="tool-sub-btn" onclick="addCanvasBlock(\'display_text\')"><span class="sub-icon">&#128221;</span><span class="sub-label">טקסט חופשי</span></button>';
-    html += '<button class="tool-sub-btn" onclick="addCanvasBlock(\'display_column\')"><span class="sub-icon">&#128202;</span><span class="sub-label">השמעת ערך</span></button>';
+    html += '<button class="tool-sub-btn" onclick="showColumnToolPicker(event)"><span class="sub-icon">&#128202;</span><span class="sub-label">השמעת ערך</span></button>';
     html += '<button class="tool-sub-btn" onclick="addCanvasBlock(\'display_recording\')"><span class="sub-icon">&#127925;</span><span class="sub-label">הקלטה</span></button>';
     html += '</div>';
     html += '<button class="tool-btn" style="border-color:#10b981" onclick="addCanvasBlock(\'collect_input\')"><span class="tool-icon">&#127908;</span><span class="tool-label">קליטת נתון</span></button>';
@@ -2083,6 +2120,77 @@ function addCondVarSeg(stepIdx, condIdx, refStepId) {
     if (!cond.segments) cond.segments = [];
     cond.segments.push({ type: 'variable', refStepId: refStepId });
     saveDB();
+    editForm(editingFormId);
+}
+
+function showColumnToolPicker(e) {
+    // Remove existing popup
+    var old = document.getElementById('colToolPopup');
+    if (old) old.remove();
+
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+
+    // Gather all columns from all tables
+    var popup = document.createElement('div');
+    popup.id = 'colToolPopup';
+    popup.className = 'col-tool-popup';
+
+    var title = document.createElement('div');
+    title.className = 'col-tool-popup-title';
+    title.textContent = '📊 בחר ערך להשמעה';
+    popup.appendChild(title);
+
+    DB.tables.forEach(function(t) {
+        if (t.columns.length === 0) return;
+        var tLabel = document.createElement('div');
+        tLabel.style.cssText = 'font-size:9px;color:rgba(255,255,255,0.4);padding:4px 10px 2px;font-weight:600';
+        tLabel.textContent = t.name;
+        popup.appendChild(tLabel);
+        t.columns.forEach(function(c) {
+            var btn = document.createElement('button');
+            btn.className = 'col-tool-popup-item';
+            btn.innerHTML = '<span class="col-num">' + c.num + '.</span> ' + c.name;
+            btn.onclick = function() {
+                popup.remove();
+                addColumnBlock(t.id, c.name);
+            };
+            popup.appendChild(btn);
+        });
+    });
+
+    // Position near the button (left of the tool palette in RTL)
+    var rect = e.currentTarget.getBoundingClientRect();
+    popup.style.top = Math.min(rect.top, window.innerHeight - 300) + 'px';
+    popup.style.left = Math.max(8, rect.left - 180) + 'px';
+    document.body.appendChild(popup);
+
+    // Close on click outside
+    setTimeout(function() {
+        document.addEventListener('click', function closePopup(ev) {
+            if (!popup.contains(ev.target)) {
+                popup.remove();
+                document.removeEventListener('click', closePopup);
+            }
+        });
+    }, 50);
+}
+
+function addColumnBlock(tableId, colName) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    ensureRows(form);
+    var lastRow = 0;
+    form.steps.forEach(function(s) { if ((s.row || 0) > lastRow) lastRow = s.row || 0; });
+    var step = {
+        id: genId(), type: 'display_data', name: colName,
+        tableId: tableId, lookupColumn: '', row: lastRow,
+        segments: [{ type: 'column', columnName: colName }],
+        conditional: false, conditions: []
+    };
+    form.steps.push(step);
+    saveDB();
+    editingBlockIdx = -1;
     editForm(editingFormId);
 }
 
