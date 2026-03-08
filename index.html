@@ -844,7 +844,9 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
     gap: 10px;
     flex: 1;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
 }
 .track-row-connector {
     text-align: center;
@@ -1619,14 +1621,9 @@ function editForm(id) {
     // Canvas (main area)
     html += '<div class="canvas" id="formCanvas">';
 
-    // Form info bar
+    // Form info bar (name only - table is per-block now)
     html += '<div class="canvas-info-bar">';
     html += '<div class="form-group" style="flex:1;margin:0"><label style="font-size:11px;color:var(--muted)">שם הטופס</label><input type="text" value="' + esc(form.name) + '" onchange="updateFormName(this.value)" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;width:100%"></div>';
-    html += '<div class="form-group" style="flex:1;margin:0"><label style="font-size:11px;color:var(--muted)">טבלה מקושרת</label><select onchange="updateFormTable(this.value)" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;width:100%">';
-    DB.tables.forEach(function(t) {
-        html += '<option value="' + t.id + '"' + (form.tableId === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>';
-    });
-    html += '</select></div>';
     html += '</div>';
 
     // Blocks canvas
@@ -1665,17 +1662,10 @@ function editForm(id) {
 
 // ============ CANVAS RENDERING ============
 function ensureRows(form) {
-    // Assign row numbers if not set
-    var currentRow = 0;
-    form.steps.forEach(function(step, idx) {
+    // Assign row 0 to all blocks without a row (all on same row by default)
+    form.steps.forEach(function(step) {
         if (typeof step.row !== 'number') {
-            // Auto-assign: conditions and DTMF start new row
-            var isCondition = step.type === 'display_data' && step.conditional;
-            var isCollectDTMF = step.type === 'collect_input' && step.inputType === 'dtmf';
-            if (idx > 0 && (isCondition || isCollectDTMF)) currentRow++;
-            step.row = currentRow;
-            // After a condition/DTMF block, next block goes to new row too
-            if (isCondition || isCollectDTMF) currentRow++;
+            step.row = 0;
         }
     });
 }
@@ -1849,7 +1839,6 @@ function renderBlockCube(step, idx, form) {
     if (summary) html += '<div class="block-summary">' + esc(summary) + '</div>';
     html += '</div>';
     html += '<div class="block-actions">';
-    html += '<button class="block-act" onclick="openBlockEditor(' + idx + ')" title="עריכה">&#9998;</button>';
     html += '<button class="block-act del-act" onclick="deleteStep(' + idx + ')" title="מחק">&#10005;</button>';
     html += '</div>';
     // Row toggle button
@@ -2105,11 +2094,11 @@ function addCanvasBlock(type) {
     var isDisplaySub = type === 'display_text' || type === 'display_column' || type === 'display_recording';
     var actualType = (isCondition || isDisplaySub) ? 'display_data' : type;
 
-    // Determine row: conditions always get new row, others go on last row
+    // All blocks go on the same row by default (user manually breaks rows)
     ensureRows(form);
     var lastRow = 0;
-    form.steps.forEach(function(s) { if (s.row > lastRow) lastRow = s.row; });
-    var newRow = (isCondition) ? lastRow + 1 : lastRow;
+    form.steps.forEach(function(s) { if ((s.row || 0) > lastRow) lastRow = s.row || 0; });
+    var newRow = lastRow;
 
     var step = { id: genId(), type: actualType, name: '', row: newRow };
 
@@ -2148,10 +2137,8 @@ function addCanvasBlock(type) {
     form.steps.push(step);
     saveDB();
 
-    // Sub-tools: don't auto-open editor, just show block on canvas
-    if (!isDisplaySub) {
-        editingBlockIdx = form.steps.length - 1;
-    }
+    // Never auto-open editor - user clicks gear icon when needed
+    editingBlockIdx = -1;
     editForm(editingFormId);
 }
 
@@ -2159,12 +2146,14 @@ function openBlockEditor(idx) {
     editingBlockIdx = idx;
     var form = DB.forms.find(function(f) { return f.id === editingFormId; });
     if (!form || idx >= form.steps.length) return;
-    var table = DB.tables.find(function(t) { return t.id === form.tableId; });
     var step = form.steps[idx];
+    // Table is now per-block, fallback to form-level for legacy data
+    var tableId = step.tableId || form.tableId;
+    var table = DB.tables.find(function(t) { return t.id === tableId; });
 
     var typeName = { auto_capture: 'קליטה אוטומטית', display_data: 'השמעת נתון', collect_input: 'קלט מהמשתמש', playback: 'סיכום' }[step.type];
     if (step.type === 'display_data' && step.conditional) typeName = 'תנאי';
-    document.getElementById('blockEditorTitle').innerHTML = '&#9998; ' + typeName + ' \u2014 ' + esc(step.name);
+    document.getElementById('blockEditorTitle').innerHTML = '&#9881; ' + typeName + ' \u2014 ' + esc(step.name);
     document.getElementById('blockEditorBody').innerHTML = renderBlockEditorContent(step, idx, form, table);
     openModal('blockEditorModal');
 }
@@ -2185,7 +2174,24 @@ function renderBlockEditorContent(step, idx, form, table) {
     var cols = table ? table.columns : [];
     var html = '';
 
+    // Block name
     html += '<div class="form-group" style="margin-bottom:14px"><label>שם הבלוק</label><input type="text" value="' + esc(step.name) + '" onchange="updateStep(' + idx + ',\'name\',this.value)" style="width:100%"></div>';
+
+    // Table + Column per block
+    html += '<div class="form-row">';
+    html += '<div class="form-group"><label>טבלה</label><select onchange="updateStepTable(' + idx + ',this.value)">';
+    html += '<option value="">-- בחר --</option>';
+    DB.tables.forEach(function(t) {
+        var sel = (step.tableId === t.id || (!step.tableId && form.tableId === t.id)) ? ' selected' : '';
+        html += '<option value="' + t.id + '"' + sel + '>' + esc(t.name) + '</option>';
+    });
+    html += '</select></div>';
+    html += '<div class="form-group"><label>עמודה</label><select onchange="updateStep(' + idx + ',\'targetColumn\',this.value)">';
+    html += '<option value="">-- בחר --</option>';
+    cols.forEach(function(c) {
+        html += '<option value="' + c.id + '"' + (step.targetColumn === c.id ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
+    });
+    html += '</select></div></div>';
 
     if (step.type === 'auto_capture') {
         html += '<div class="form-row">';
@@ -2194,268 +2200,88 @@ function renderBlockEditorContent(step, idx, form, table) {
         html += '<option value="caller_id"' + (step.systemField === 'caller_id' ? ' selected' : '') + '>מזהה מתקשר</option>';
         html += '<option value="call_id"' + (step.systemField === 'call_id' ? ' selected' : '') + '>מזהה שיחה</option>';
         html += '<option value="dialed_number"' + (step.systemField === 'dialed_number' ? ' selected' : '') + '>מספר מחויג</option>';
-        html += '</select></div>';
-        html += '<div class="form-group"><label>שמור בעמודה</label><select onchange="updateStep(' + idx + ',\'targetColumn\',this.value)">';
-        html += '<option value="">-- בחר --</option>';
-        cols.forEach(function(c) {
-            html += '<option value="' + c.id + '"' + (step.targetColumn === c.id ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
-        });
         html += '</select></div></div>';
     }
 
     if (step.type === 'display_data') {
-        // Ensure segments array exists (migrate from old ttsText)
-        if (!step.segments) {
-            step.segments = [];
-            if (step.ttsText) {
-                // Parse old format into segments
-                var parts = step.ttsText.split(/(\{[^}]+\}|\[\[[^\]]+\]\])/g);
-                parts.forEach(function(p) {
-                    if (!p) return;
-                    if (p.match(/^\{(.+)\}$/)) {
-                        step.segments.push({ type: 'column', columnName: p.replace(/[{}]/g, '') });
-                    } else if (p.match(/^\[\[(.+)\]\]$/)) {
-                        step.segments.push({ type: 'recording', recName: p.replace(/[\[\]]/g, '') });
-                    } else if (p.trim()) {
-                        step.segments.push({ type: 'text', text: p });
-                    }
-                });
-            }
+        if (!step.segments) { step.segments = []; }
+
+        // For text blocks: show text input
+        if (!step.conditional && step.segments.length > 0 && step.segments[0].type === 'text') {
+            html += '<div class="form-row full"><div class="form-group"><label>טקסט</label>';
+            html += '<input type="text" value="' + esc(step.segments[0].text || '') + '" onchange="updateSegText(' + idx + ',0,this.value)" placeholder="הקלד טקסט להשמעה..." style="width:100%">';
+            html += '</div></div>';
+        }
+        // For column blocks: show column picker
+        if (!step.conditional && step.segments.length > 0 && step.segments[0].type === 'column') {
+            html += '<div class="form-row full"><div class="form-group"><label>עמודה להשמעה</label>';
+            html += '<select onchange="updateSegCol(' + idx + ',0,this.value)">';
+            html += '<option value="">-- בחר --</option>';
+            cols.forEach(function(c) {
+                html += '<option value="' + esc(c.name) + '"' + (step.segments[0].columnName === c.name ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
+            });
+            html += '</select></div></div>';
+        }
+        // For recording blocks: show recording picker
+        if (!step.conditional && step.segments.length > 0 && step.segments[0].type === 'recording') {
+            var recs = DB.recordings || [];
+            html += '<div class="form-row full"><div class="form-group"><label>הקלטה</label>';
+            html += '<select onchange="updateSegRec(' + idx + ',0,this.value)">';
+            html += '<option value="">-- בחר --</option>';
+            recs.forEach(function(r) {
+                html += '<option value="' + esc(r.name) + '"' + (step.segments[0].recName === r.name ? ' selected' : '') + '>' + esc(r.name) + '</option>';
+            });
+            html += '</select>';
+            if (recs.length === 0) html += '<small style="color:var(--muted)">אין הקלטות. <a href="#" onclick="event.preventDefault();showPage(\'recordings\')" style="color:#db2777">צור הקלטה</a></small>';
+            html += '</div></div>';
         }
 
-        // Lookup column
-        html += '<div class="form-row full">';
-        html += '<div class="form-group"><label>חפש לפי עמודה (מזהה המשתמש)</label><select onchange="updateStep(' + idx + ',\'lookupColumn\',this.value)">';
-        html += '<option value="">-- בחר --</option>';
-        cols.forEach(function(c) {
-            html += '<option value="' + c.id + '"' + (step.lookupColumn === c.id ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
-        });
-        html += '</select></div></div>';
-
-        // Conditional toggle
-        html += '<div class="form-row full"><div class="form-group">';
-        html += '<label><input type="checkbox" ' + (step.conditional ? 'checked' : '') + ' onchange="toggleConditional(' + idx + ',this.checked)"> השמעה מותנית (תוכן שונה לפי ערך בעמודה)</label>';
-        html += '</div></div>';
-
+        // Conditional blocks
         if (step.conditional) {
+            html += '<div class="form-row full"><div class="form-group"><label>סוג תנאי</label>';
+            html += '<select onchange="updateStep(' + idx + ',\'conditionType\',this.value)">';
+            html += '<option value="equals"' + ((step.conditionType || 'equals') === 'equals' ? ' selected' : '') + '>שווה ל</option>';
+            html += '<option value="not_equals"' + (step.conditionType === 'not_equals' ? ' selected' : '') + '>שונה מ</option>';
+            html += '<option value="contains"' + (step.conditionType === 'contains' ? ' selected' : '') + '>מכיל</option>';
+            html += '<option value="greater"' + (step.conditionType === 'greater' ? ' selected' : '') + '>גדול מ</option>';
+            html += '<option value="less"' + (step.conditionType === 'less' ? ' selected' : '') + '>קטן מ</option>';
+            html += '</select></div></div>';
+
             html += '<div class="form-row full"><div class="form-group"><label>בדוק ערך בעמודה</label><select onchange="updateStep(' + idx + ',\'conditionColumn\',this.value)">';
             html += '<option value="">-- בחר --</option>';
             cols.forEach(function(c) {
                 html += '<option value="' + c.id + '"' + (step.conditionColumn === c.id ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
             });
             html += '</select></div></div>';
-        }
 
-        var recs = DB.recordings || [];
-
-        if (!step.conditional) {
-            // ===== TIMELINE TRACK EDITOR =====
-            html += '<div class="form-row full"><div class="form-group">';
-            html += '<label>&#127909; ציר השמעה (Timeline)</label>';
-            html += '<div class="timeline-track" id="track_' + idx + '">';
-            html += '<div class="tl-track-label">&#9654; רצף השמעה</div>';
-            var segs = step.segments || [];
-            if (segs.length === 0) {
-                html += '<div style="color:#666;font-size:13px;padding:8px;width:100%;text-align:center">לחץ על הכפתורים למטה להוספת בלוקים לציר</div>';
-            }
-            segs.forEach(function(seg, si) {
-                var segClass = 'type-' + seg.type;
-                var segIcon = seg.type === 'text' ? '&#128172;' : seg.type === 'column' ? '&#128202;' : seg.type === 'variable' ? '&#128279;' : '&#127908;';
-
-                if (seg.type === 'text') {
-                    html += '<div class="tl-seg ' + segClass + '">';
-                    html += '<span class="seg-icon">' + segIcon + '</span>';
-                    html += '<input type="text" class="seg-text-input" value="' + esc(seg.text || '') + '" placeholder="הקלד טקסט..." onchange="updateSegText(' + idx + ',' + si + ',this.value)" onclick="event.stopPropagation()">';
-                    html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
-                    html += '</div>';
-                } else if (seg.type === 'column') {
-                    var colMode = seg.playMode || 'tts';
-                    var modeIcon = colMode === 'recording' ? '&#127908;' : '&#128172;';
-                    var modeLabel = colMode === 'recording' ? 'מילון' : 'TTS';
-                    var modeBg = colMode === 'recording' ? 'background:#7c3aed;border-color:#8b5cf6' : '';
-                    html += '<div class="tl-seg ' + segClass + '" style="' + modeBg + '" onclick="editSegment(' + idx + ',' + si + ',event)" title="לחץ להחלפת עמודה">';
-                    html += '<span class="seg-icon">' + segIcon + '</span>';
-                    html += '<span class="seg-label">{' + esc(seg.columnName || '?') + '}</span>';
-                    html += '<button class="seg-mode-btn" onclick="event.stopPropagation();toggleSegMode(' + idx + ',' + si + ')" title="החלף בין TTS להקלטה מהמילון">' + modeIcon + ' ' + modeLabel + '</button>';
-                    html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
-                    html += '</div>';
-                } else if (seg.type === 'variable') {
-                    var refStep = form.steps.find(function(st) { return st.id === seg.refStepId; });
-                    var refName = refStep ? refStep.name : '?';
-                    var refIdx = refStep ? form.steps.indexOf(refStep) + 1 : '?';
-                    html += '<div class="tl-seg ' + segClass + '">';
-                    html += '<span class="seg-icon">' + segIcon + '</span>';
-                    html += '<span class="seg-label">{&#128203; ' + refIdx + ': ' + esc(refName) + '}</span>';
-                    html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
-                    html += '</div>';
-                } else {
-                    html += '<div class="tl-seg ' + segClass + '" onclick="editSegment(' + idx + ',' + si + ',event)" title="לחץ לעריכה">';
-                    html += '<span class="seg-icon">' + segIcon + '</span>';
-                    html += '<span class="seg-label">[[' + esc(seg.recName || '?') + ']]</span>';
-                    html += '<button class="seg-del" onclick="event.stopPropagation();removeSegment(' + idx + ',' + si + ')" title="הסר">&#10005;</button>';
-                    html += '</div>';
-                }
-                if (si < segs.length - 1) html += '<span class="tl-connector">&#9654;</span>';
-            });
-            html += '</div>'; // end timeline-track
-
-            // Collect collect_input blocks for variable picker
-            var collectBlocks = [];
-            form.steps.forEach(function(s, si) {
-                if (s.type === 'collect_input') collectBlocks.push({ step: s, idx: si });
-            });
-
-            // Add segment buttons
-            html += '<div class="tl-controls">';
-            html += '<button class="tl-btn btn-text" onclick="addSegment(' + idx + ',\'text\')">&#128172; + טקסט חופשי</button>';
-            html += '<button class="tl-btn btn-col" onclick="showColPicker(' + idx + ')">&#128202; + ערך מעמודה</button>';
-            html += '<button class="tl-btn btn-rec" onclick="showRecPicker(' + idx + ')">&#127908; + הקלטה</button>';
-            if (collectBlocks.length > 0) {
-                html += '<button class="tl-btn btn-var" onclick="showVarPicker(' + idx + ')">&#128279; + משתנה</button>';
-            }
-            html += '</div>';
-
-            // Variable picker dropdown (hidden)
-            if (collectBlocks.length > 0) {
-                html += '<div id="varPicker_' + idx + '" style="display:none;margin-top:8px;padding:10px;background:#f5f3ff;border:1px solid #8b5cf6;border-radius:8px">';
-                html += '<label style="font-size:12px;font-weight:600;color:#7c3aed;display:block;margin-bottom:6px">בחר בלוק קליטת נתון:</label>';
-                html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
-                collectBlocks.forEach(function(cb) {
-                    html += '<button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="addVarSegment(' + idx + ',\'' + cb.step.id + '\')">&#128203; ' + (cb.idx + 1) + ': ' + esc(cb.step.name) + '</button>';
-                });
-                html += '</div></div>';
-            }
-
-            // Column picker dropdown (hidden)
-            html += '<div id="colPicker_' + idx + '" style="display:none;margin-top:8px;padding:10px;background:#ecfdf5;border:1px solid #10b981;border-radius:8px">';
-            html += '<label style="font-size:12px;font-weight:600;color:#059669;display:block;margin-bottom:6px">בחר עמודה:</label>';
-            html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
-            cols.forEach(function(c) {
-                html += '<button class="btn btn-sm" style="background:#059669;color:#fff" onclick="addColumnSegment(' + idx + ',\'' + esc(c.name) + '\')">עמודה ' + c.num + ': ' + esc(c.name) + '</button>';
-            });
-            html += '</div></div>';
-
-            // Recording picker dropdown (hidden)
-            html += '<div id="recPicker_' + idx + '" style="display:none;margin-top:8px;padding:10px;background:#fdf2f8;border:1px solid #ec4899;border-radius:8px">';
-            html += '<label style="font-size:12px;font-weight:600;color:#db2777;display:block;margin-bottom:6px">בחר הקלטה מהבנק:</label>';
-            if (recs.length > 0) {
-                html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
-                recs.forEach(function(r) {
-                    var badge = r.blockType === 'column' ? ' (עמודה: ' + esc(r.columnName || '') + ')' : '';
-                    html += '<button class="btn btn-sm" style="background:#db2777;color:#fff" onclick="addRecSegment(' + idx + ',\'' + esc(r.name) + '\')">' + esc(r.name) + badge + '</button>';
-                });
-                html += '</div>';
-            } else {
-                html += '<small style="color:var(--muted)">אין הקלטות בבנק. <a href="#" onclick="event.preventDefault();showPage(\'recordings\')" style="color:#db2777">צור הקלטה חדשה</a></small>';
-            }
-            html += '</div>';
-
-            html += '</div></div>'; // end form-group, form-row
-        } else {
-            // Conditional rows with timeline tracks per condition
             html += '<div class="condition-list">';
             html += '<label style="font-size:13px;font-weight:600;margin-bottom:8px;display:block">תנאים:</label>';
             var conds = step.conditions || [];
             conds.forEach(function(cond, ci) {
-                // Ensure segments for conditions too
-                if (!cond.segments) {
-                    cond.segments = [];
-                    if (cond.ttsText) {
-                        var cparts = cond.ttsText.split(/(\{[^}]+\}|\[\[[^\]]+\]\])/g);
-                        cparts.forEach(function(p) {
-                            if (!p) return;
-                            if (p.match(/^\{(.+)\}$/)) cond.segments.push({ type: 'column', columnName: p.replace(/[{}]/g, '') });
-                            else if (p.match(/^\[\[(.+)\]\]$/)) cond.segments.push({ type: 'recording', recName: p.replace(/[\[\]]/g, '') });
-                            else if (p.trim()) cond.segments.push({ type: 'text', text: p });
-                        });
-                    }
-                }
-                html += '<div style="padding:12px;background:#f8f9fc;border-radius:10px;margin-bottom:10px;border:1px solid var(--border)">';
-                html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
-                html += '<span style="font-size:12px;font-weight:600">אם הערך =</span>';
-                html += '<input style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:120px;font-family:inherit" type="text" value="' + esc(cond.value) + '" onchange="updateCondition(' + idx + ',' + ci + ',\'value\',this.value)">';
-                html += '<button class="btn btn-icon btn-danger btn-sm" onclick="removeCondition(' + idx + ',' + ci + ')">&#10005;</button>';
-                html += '</div>';
-                // Mini timeline for condition
-                html += '<div class="timeline-track" id="ctrack_' + idx + '_' + ci + '" style="min-height:50px">';
-                var csegs = cond.segments || [];
-                csegs.forEach(function(seg, si) {
-                    var segClass = 'type-' + seg.type;
-                    var segIcon = seg.type === 'text' ? '&#128172;' : seg.type === 'column' ? '&#128202;' : seg.type === 'variable' ? '&#128279;' : '&#127908;';
-                    if (seg.type === 'text') {
-                        html += '<div class="tl-seg ' + segClass + '">';
-                        html += '<span class="seg-icon">' + segIcon + '</span>';
-                        html += '<input type="text" class="seg-text-input" value="' + esc(seg.text || '') + '" placeholder="הקלד טקסט..." onchange="updateCondSegText(' + idx + ',' + ci + ',' + si + ',this.value)" onclick="event.stopPropagation()">';
-                        html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
-                        html += '</div>';
-                    } else if (seg.type === 'column') {
-                        var cColMode = seg.playMode || 'tts';
-                        var cModeIcon = cColMode === 'recording' ? '&#127908;' : '&#128172;';
-                        var cModeLabel = cColMode === 'recording' ? 'מילון' : 'TTS';
-                        var cModeBg = cColMode === 'recording' ? 'background:#7c3aed;border-color:#8b5cf6' : '';
-                        html += '<div class="tl-seg ' + segClass + '" style="' + cModeBg + '" onclick="editCondSeg(' + idx + ',' + ci + ',' + si + ',event)" title="לחץ לעריכה">';
-                        html += '<span class="seg-icon">' + segIcon + '</span>';
-                        html += '<span class="seg-label">{' + esc(seg.columnName || '?') + '}</span>';
-                        html += '<button class="seg-mode-btn" onclick="event.stopPropagation();toggleCondSegMode(' + idx + ',' + ci + ',' + si + ')">' + cModeIcon + ' ' + cModeLabel + '</button>';
-                        html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
-                        html += '</div>';
-                    } else if (seg.type === 'variable') {
-                        var cRefStep = form.steps.find(function(st) { return st.id === seg.refStepId; });
-                        var cRefName = cRefStep ? cRefStep.name : '?';
-                        var cRefIdx = cRefStep ? form.steps.indexOf(cRefStep) + 1 : '?';
-                        html += '<div class="tl-seg ' + segClass + '">';
-                        html += '<span class="seg-icon">' + segIcon + '</span>';
-                        html += '<span class="seg-label">{&#128203; ' + cRefIdx + ': ' + esc(cRefName) + '}</span>';
-                        html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
-                        html += '</div>';
-                    } else {
-                        html += '<div class="tl-seg ' + segClass + '" onclick="editCondSeg(' + idx + ',' + ci + ',' + si + ',event)" title="לחץ לעריכה">';
-                        html += '<span class="seg-icon">' + segIcon + '</span>';
-                        html += '<span class="seg-label">[[' + esc(seg.recName || '?') + ']]</span>';
-                        html += '<button class="seg-del" onclick="event.stopPropagation();removeCondSeg(' + idx + ',' + ci + ',' + si + ')">&#10005;</button>';
-                        html += '</div>';
-                    }
-                    if (si < csegs.length - 1) html += '<span class="tl-connector">&#9654;</span>';
-                });
-                if (csegs.length === 0) html += '<div style="color:#666;font-size:12px;padding:4px">ריק - הוסף בלוקים</div>';
-                html += '</div>';
-                // Collect collect_input blocks for variable picker
-                var condCollectBlocks = [];
-                form.steps.forEach(function(s, si) {
-                    if (s.type === 'collect_input') condCollectBlocks.push({ step: s, idx: si });
-                });
-                html += '<div class="tl-controls" style="margin-top:6px">';
-                html += '<button class="tl-btn btn-text btn-sm" onclick="addCondSegText(' + idx + ',' + ci + ')">&#128172; + טקסט</button>';
-                html += '<button class="tl-btn btn-col btn-sm" onclick="showCondColPicker(' + idx + ',' + ci + ')">&#128202; + עמודה</button>';
-                html += '<button class="tl-btn btn-rec btn-sm" onclick="showCondRecPicker(' + idx + ',' + ci + ')">&#127908; + הקלטה</button>';
-                if (condCollectBlocks.length > 0) {
-                    html += '<button class="tl-btn btn-var btn-sm" onclick="showCondVarPicker(' + idx + ',' + ci + ')">&#128279; + משתנה</button>';
-                }
-                html += '</div>';
-                // Condition column picker
-                html += '<div id="condColPicker_' + idx + '_' + ci + '" style="display:none;margin-top:6px;padding:8px;background:#ecfdf5;border:1px solid #10b981;border-radius:6px">';
-                html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
-                cols.forEach(function(c) {
-                    html += '<button class="btn btn-sm" style="background:#059669;color:#fff;font-size:11px" onclick="addCondColSeg(' + idx + ',' + ci + ',\'' + esc(c.name) + '\')">' + esc(c.name) + '</button>';
-                });
-                html += '</div></div>';
-                // Condition recording picker
-                html += '<div id="condRecPicker_' + idx + '_' + ci + '" style="display:none;margin-top:6px;padding:8px;background:#fdf2f8;border:1px solid #ec4899;border-radius:6px">';
-                html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
-                recs.forEach(function(r) {
-                    html += '<button class="btn btn-sm" style="background:#db2777;color:#fff;font-size:11px" onclick="addCondRecSeg(' + idx + ',' + ci + ',\'' + esc(r.name) + '\')">' + esc(r.name) + '</button>';
-                });
-                html += '</div></div>';
-                // Condition variable picker
-                if (condCollectBlocks.length > 0) {
-                    html += '<div id="condVarPicker_' + idx + '_' + ci + '" style="display:none;margin-top:6px;padding:8px;background:#f5f3ff;border:1px solid #8b5cf6;border-radius:6px">';
-                    html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
-                    condCollectBlocks.forEach(function(cb) {
-                        html += '<button class="btn btn-sm" style="background:#7c3aed;color:#fff;font-size:11px" onclick="addCondVarSeg(' + idx + ',' + ci + ',\'' + cb.step.id + '\')">&#128203; ' + (cb.idx + 1) + ': ' + esc(cb.step.name) + '</button>';
+                html += '<div style="padding:10px;background:#f8f9fc;border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">';
+                html += '<div style="display:flex;align-items:center;gap:8px">';
+                html += '<span style="font-size:12px;font-weight:600">ערך =</span>';
+                html += '<input style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:120px;font-family:inherit" type="text" value="' + esc(cond.value) + '" onchange="updateCondition(' + idx + ',' + ci + ',\'value\',this.value)">';
+                // Condition end action
+                html += '<select style="padding:5px;font-size:11px;border:1px solid var(--border);border-radius:6px;font-family:inherit" onchange="updateCondAction(' + idx + ',' + ci + ',this.value)">';
+                html += '<option value="">-- פעולה --</option>';
+                html += '<option value="goto_block"' + (cond.endAction === 'goto_block' ? ' selected' : '') + '>מעבר לבלוק</option>';
+                html += '<option value="activate_module"' + (cond.endAction === 'activate_module' ? ' selected' : '') + '>שלוחה/מודול</option>';
+                html += '</select>';
+                if (cond.endAction === 'goto_block') {
+                    html += '<select style="padding:5px;font-size:11px;border:1px solid var(--border);border-radius:6px;font-family:inherit" onchange="updateCondEndTarget(' + idx + ',' + ci + ',this.value)">';
+                    html += '<option value="">-- בלוק --</option>';
+                    form.steps.forEach(function(s, si) {
+                        if (si === idx) return;
+                        html += '<option value="' + s.id + '"' + (cond.endTarget === s.id ? ' selected' : '') + '>' + (si + 1) + ': ' + esc(s.name) + '</option>';
                     });
-                    html += '</div></div>';
+                    html += '</select>';
                 }
-                html += '</div>';
+                if (cond.endAction === 'activate_module') {
+                    html += '<input style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;width:100px;font-family:inherit" type="text" value="' + esc(cond.endTarget || '') + '" onchange="updateCondEndTarget(' + idx + ',' + ci + ',this.value)" placeholder="מודול/שלוחה">';
+                }
+                html += '<button class="btn btn-icon btn-danger btn-sm" onclick="removeCondition(' + idx + ',' + ci + ')">&#10005;</button>';
+                html += '</div></div>';
             });
             html += '<button class="btn btn-sm btn-secondary" onclick="addCondition(' + idx + ')">+ תנאי</button>';
             html += '</div>';
@@ -2583,6 +2409,31 @@ function renderBlockEditorContent(step, idx, form, table) {
         html += '<small style="color:var(--muted)">השתמש ב-{שם שדה} להכנסת ערכים</small></div></div>';
     }
 
+    // ===== NEXT ACTION (all block types) =====
+    html += '<hr style="border:none;border-top:1px solid var(--border);margin:14px 0">';
+    html += '<div class="form-row">';
+    html += '<div class="form-group"><label>בסיום הפעולה</label>';
+    html += '<select onchange="updateStep(' + idx + ',\'nextAction\',this.value)">';
+    html += '<option value=""' + (!step.nextAction ? ' selected' : '') + '>המשך לבלוק הבא</option>';
+    html += '<option value="goto_block"' + (step.nextAction === 'goto_block' ? ' selected' : '') + '>עבור לבלוק</option>';
+    html += '<option value="activate_module"' + (step.nextAction === 'activate_module' ? ' selected' : '') + '>הפעל מודול/שלוחה</option>';
+    html += '</select></div>';
+    if (step.nextAction === 'goto_block') {
+        html += '<div class="form-group"><label>עבור לבלוק</label>';
+        html += '<select onchange="updateStep(' + idx + ',\'nextTarget\',this.value)">';
+        html += '<option value="">-- בחר --</option>';
+        form.steps.forEach(function(s, si) {
+            if (si === idx) return;
+            html += '<option value="' + s.id + '"' + (step.nextTarget === s.id ? ' selected' : '') + '>' + (si + 1) + ': ' + esc(s.name) + '</option>';
+        });
+        html += '</select></div>';
+    }
+    if (step.nextAction === 'activate_module') {
+        html += '<div class="form-group"><label>שם מודול/שלוחה</label>';
+        html += '<input type="text" value="' + esc(step.nextTarget || '') + '" onchange="updateStep(' + idx + ',\'nextTarget\',this.value)" placeholder="ext_100, billing..."></div>';
+    }
+    html += '</div>';
+
     return html;
 }
 
@@ -2663,14 +2514,54 @@ function updateStep(idx, key, val) {
     form.steps[idx][key] = val;
     saveDB();
     // Re-render if type-changing fields
-    if (key === 'promptType' || key === 'inputType') editForm(editingFormId);
+    if (key === 'promptType' || key === 'inputType' || key === 'nextAction') {
+        openBlockEditor(idx);
+    }
     // Update modal title if name changed
     if (key === 'name' && editingBlockIdx === idx) {
         var step = form.steps[idx];
         var typeName = { auto_capture: 'קליטה אוטומטית', display_data: 'השמעת נתון', collect_input: 'קלט מהמשתמש', playback: 'סיכום' }[step.type];
         if (step.type === 'display_data' && step.conditional) typeName = 'תנאי';
-        document.getElementById('blockEditorTitle').innerHTML = '&#9998; ' + typeName + ' — ' + esc(val);
+        document.getElementById('blockEditorTitle').innerHTML = '&#9881; ' + typeName + ' — ' + esc(val);
     }
+}
+
+function updateStepTable(idx, tableId) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[idx].tableId = tableId;
+    saveDB();
+    openBlockEditor(idx);
+}
+
+function updateSegCol(idx, segIdx, colName) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[idx].segments[segIdx].columnName = colName;
+    saveDB();
+}
+
+function updateSegRec(idx, segIdx, recName) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[idx].segments[segIdx].recName = recName;
+    saveDB();
+}
+
+function updateCondAction(idx, condIdx, action) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[idx].conditions[condIdx].endAction = action;
+    form.steps[idx].conditions[condIdx].endTarget = '';
+    saveDB();
+    openBlockEditor(idx);
+}
+
+function updateCondEndTarget(idx, condIdx, val) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[idx].conditions[condIdx].endTarget = val;
+    saveDB();
 }
 
 function updateFormName(val) {
