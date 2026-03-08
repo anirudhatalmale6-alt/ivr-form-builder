@@ -709,6 +709,48 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 }
 .tool-btn .tool-icon { font-size: 24px; display: block; margin-bottom: 3px; }
 .tool-btn .tool-label { font-size: 10px; font-weight: 600; }
+/* Sub-tools group */
+.tool-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 2px solid rgba(59,130,246,0.3);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.tool-group-header {
+    padding: 6px 6px 4px;
+    background: rgba(59,130,246,0.12);
+    color: #93c5fd;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    border-bottom: 1px solid rgba(59,130,246,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+.tool-group-header .tool-icon { font-size: 14px; }
+.tool-sub-btn {
+    padding: 7px 6px;
+    background: rgba(255,255,255,0.03);
+    color: #fff;
+    cursor: pointer;
+    text-align: center;
+    font-family: inherit;
+    transition: all 0.15s;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+.tool-sub-btn:last-child { border-bottom: none; }
+.tool-sub-btn:hover { background: rgba(59,130,246,0.15); }
+.tool-sub-btn .sub-icon { font-size: 14px; flex-shrink: 0; }
+.tool-sub-btn .sub-label { font-size: 9px; font-weight: 600; }
 .canvas {
     flex: 1;
     background: linear-gradient(135deg, #f5f6fa 0%, #eaecf2 100%);
@@ -1578,7 +1620,13 @@ function editForm(id) {
     // Tool palette (left side = right in RTL)
     html += '<div class="tool-palette">';
     html += '<div class="tool-palette-title">&#128295; כלים</div>';
-    html += '<button class="tool-btn" style="border-color:#3b82f6" onclick="addCanvasBlock(\'display_data\')"><span class="tool-icon">&#128266;</span><span class="tool-label">השמעת נתון</span></button>';
+    // Display Data group with sub-tools
+    html += '<div class="tool-group">';
+    html += '<div class="tool-group-header"><span class="tool-icon">&#128266;</span> השמעת נתון</div>';
+    html += '<button class="tool-sub-btn" onclick="addCanvasBlock(\'display_text\')"><span class="sub-icon">&#128221;</span><span class="sub-label">טקסט חופשי</span></button>';
+    html += '<button class="tool-sub-btn" onclick="addCanvasBlock(\'display_column\')"><span class="sub-icon">&#128202;</span><span class="sub-label">השמעת ערך</span></button>';
+    html += '<button class="tool-sub-btn" onclick="addCanvasBlock(\'display_recording\')"><span class="sub-icon">&#127925;</span><span class="sub-label">הקלטה</span></button>';
+    html += '</div>';
     html += '<button class="tool-btn" style="border-color:#10b981" onclick="addCanvasBlock(\'collect_input\')"><span class="tool-icon">&#127908;</span><span class="tool-label">קליטת נתון</span></button>';
     html += '<button class="tool-btn" style="border-color:#f59e0b" onclick="addCanvasBlock(\'display_data_cond\')"><span class="tool-icon">&#128256;</span><span class="tool-label">תנאי</span></button>';
     html += '<button class="tool-btn" style="border-color:#6c757d" onclick="addCanvasBlock(\'auto_capture\')"><span class="tool-icon">&#128268;</span><span class="tool-label">קליטה אוטומטית</span></button>';
@@ -2032,7 +2080,8 @@ function addCanvasBlock(type) {
     if (!form) return;
 
     var isCondition = type === 'display_data_cond';
-    var actualType = isCondition ? 'display_data' : type;
+    var isDisplaySub = type === 'display_text' || type === 'display_column' || type === 'display_recording';
+    var actualType = (isCondition || isDisplaySub) ? 'display_data' : type;
 
     // Determine row: conditions always get new row, others go on last row
     ensureRows(form);
@@ -2047,9 +2096,18 @@ function addCanvasBlock(type) {
         step.systemField = 'phone';
         step.targetColumn = '';
     } else if (actualType === 'display_data') {
-        step.name = isCondition ? 'תנאי' : 'השמעת נתון';
+        var subNames = { display_text: 'טקסט חופשי', display_column: 'השמעת ערך', display_recording: 'הקלטה' };
+        step.name = isCondition ? 'תנאי' : (subNames[type] || 'השמעת נתון');
         step.lookupColumn = '';
         step.segments = [];
+        // Pre-add segment based on sub-type
+        if (type === 'display_text') {
+            step.segments = [{ type: 'text', text: '' }];
+        } else if (type === 'display_column') {
+            step.segments = [{ type: 'column', columnName: '' }];
+        } else if (type === 'display_recording') {
+            step.segments = [{ type: 'recording', recName: '' }];
+        }
         step.conditional = isCondition;
         step.conditions = isCondition ? [{ value: '', segments: [] }] : [];
     } else if (actualType === 'collect_input') {
