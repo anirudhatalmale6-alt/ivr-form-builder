@@ -892,7 +892,28 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 /* Block Node (compact rectangle) */
 .block-wrapper {
     display: inline-flex;
+    flex-direction: column;
     align-items: center;
+    gap: 2px;
+}
+.block-settings-btn {
+    padding: 1px 8px;
+    border-radius: 0 0 6px 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-top: none;
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.35);
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+.block-settings-btn:hover {
+    background: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.8);
 }
 .block-cube {
     min-width: 170px;
@@ -1714,6 +1735,7 @@ function renderCanvasBlocks(form, table) {
             if (bi > 0) html += '<span class="block-connector">&#10132;</span>';
             html += '<div class="block-wrapper">';
             html += renderBlockCube(b.step, b.idx, form);
+            html += '<button class="block-settings-btn" onclick="event.stopPropagation();openBlockEditor(' + b.idx + ')" title="הגדרות">&#9881;</button>';
             html += '</div>';
         });
 
@@ -2126,7 +2148,10 @@ function addCanvasBlock(type) {
     form.steps.push(step);
     saveDB();
 
-    editingBlockIdx = form.steps.length - 1;
+    // Sub-tools: don't auto-open editor, just show block on canvas
+    if (!isDisplaySub) {
+        editingBlockIdx = form.steps.length - 1;
+    }
     editForm(editingFormId);
 }
 
