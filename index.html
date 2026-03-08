@@ -355,26 +355,93 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 .condition-row .tts-input { flex: 1; }
 
 /* Options (DTMF) */
-.option-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    padding: 8px;
+.option-card {
     background: #f8f9fc;
-    border-radius: 8px;
-    margin-bottom: 6px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s;
 }
+.option-card:hover { border-color: #c0c4cc; }
+.option-card.action-update { border-right: 4px solid #10b981; }
+.option-card.action-goto { border-right: 4px solid #3b82f6; }
+.option-card.action-module { border-right: 4px solid #f59e0b; }
+.option-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    user-select: none;
+}
+.option-card-header:hover { background: rgba(0,0,0,0.02); }
 .option-key {
-    width: 36px; height: 36px;
+    width: 40px; height: 40px;
     background: var(--primary);
     color: #fff;
-    border-radius: 8px;
+    border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
     font-weight: bold;
-    font-size: 16px;
+    font-size: 18px;
     flex-shrink: 0;
 }
-.option-row input { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+.option-summary { flex: 1; font-size: 13px; color: var(--text); }
+.option-summary .opt-label { font-weight: 600; }
+.option-summary .opt-action-badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-right: 6px;
+}
+.opt-action-badge.update-badge { background: #d1fae5; color: #065f46; }
+.opt-action-badge.goto-badge { background: #dbeafe; color: #1e40af; }
+.opt-action-badge.module-badge { background: #fef3c7; color: #92400e; }
+.option-expand-icon { font-size: 12px; color: var(--muted); transition: transform 0.2s; }
+.option-card.open .option-expand-icon { transform: rotate(90deg); }
+.option-card-body {
+    display: none;
+    padding: 14px;
+    border-top: 1px solid var(--border);
+    background: #fff;
+}
+.option-card.open .option-card-body { display: block; }
+.action-type-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.action-type-btn {
+    padding: 10px 8px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+    text-align: center;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+.action-type-btn:hover { border-color: #aaa; }
+.action-type-btn .act-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+.action-type-btn .act-label { font-size: 11px; font-weight: 600; color: var(--text); }
+.action-type-btn.sel-update { border-color: #10b981; background: #ecfdf5; }
+.action-type-btn.sel-goto { border-color: #3b82f6; background: #eff6ff; }
+.action-type-btn.sel-module { border-color: #f59e0b; background: #fffbeb; }
+.option-fields { display: flex; flex-direction: column; gap: 10px; }
+.option-fields .opt-field { display: flex; flex-direction: column; gap: 4px; }
+.option-fields .opt-field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.option-fields .opt-field input,
+.option-fields .opt-field select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+}
+.option-row { display: none; } /* legacy, hidden */
 
 /* Empty state */
 .empty-state {
@@ -1512,7 +1579,8 @@ function renderBlockCube(step, idx, form) {
         var conds = step.conditions || [];
         summary = conds.length + ' תנאים';
     } else if (type === 'collect_input') {
-        summary = step.promptText || step.promptFile || '';
+        var optCount = (step.options || []).length;
+        summary = optCount > 0 ? optCount + ' הקשות' : (step.promptText || step.promptFile || '');
         if (summary.length > 30) summary = summary.substring(0, 30) + '...';
     } else if (type === 'auto_capture') {
         var fieldNames = { phone: 'טלפון', caller_id: 'מזהה', call_id: 'שיחה', dialed_number: 'מספר' };
@@ -2142,17 +2210,91 @@ function renderBlockEditorContent(step, idx, form, table) {
         html += '</select></div></div>';
 
         if (step.inputType === 'dtmf') {
-            html += '<label style="font-size:13px;font-weight:600;margin:8px 0;display:block">אפשרויות:</label>';
+            html += '<label style="font-size:13px;font-weight:600;margin:8px 0;display:block">&#9742; הקשות DTMF:</label>';
             var opts = step.options || [];
             opts.forEach(function(opt, oi) {
-                html += '<div class="option-row">';
+                var action = opt.action || 'update_data';
+                var actionClass = action === 'goto_block' ? 'action-goto' : action === 'activate_module' ? 'action-module' : 'action-update';
+                var isOpen = opt._open ? ' open' : '';
+
+                // Action badge
+                var badgeClass = action === 'goto_block' ? 'goto-badge' : action === 'activate_module' ? 'module-badge' : 'update-badge';
+                var badgeText = action === 'goto_block' ? 'מעבר לבלוק' : action === 'activate_module' ? 'שלוחה/מודול' : 'עדכון נתון';
+
+                // Summary text
+                var summaryText = '';
+                if (action === 'update_data') {
+                    summaryText = opt.value ? esc(opt.value) : '<span style="color:var(--muted)">(ריק)</span>';
+                } else if (action === 'goto_block') {
+                    var gotoStep = opt.gotoBlockId ? form.steps.find(function(s) { return s.id === opt.gotoBlockId; }) : null;
+                    summaryText = gotoStep ? esc(gotoStep.name) : '<span style="color:var(--muted)">(לא נבחר)</span>';
+                } else {
+                    summaryText = opt.moduleId ? esc(opt.moduleId) : '<span style="color:var(--muted)">(ריק)</span>';
+                }
+
+                html += '<div class="option-card ' + actionClass + isOpen + '">';
+
+                // Header
+                html += '<div class="option-card-header" onclick="toggleOptionCard(' + idx + ',' + oi + ')">';
                 html += '<div class="option-key">' + esc(opt.key) + '</div>';
-                html += '<input type="text" value="' + esc(opt.label) + '" onchange="updateOption(' + idx + ',' + oi + ',\'label\',this.value)" placeholder="תיאור">';
-                html += '<input type="text" value="' + esc(opt.value) + '" onchange="updateOption(' + idx + ',' + oi + ',\'value\',this.value)" placeholder="ערך לשמירה" style="max-width:120px">';
-                html += '<button class="btn btn-icon btn-danger btn-sm" onclick="removeOption(' + idx + ',' + oi + ')">&#10005;</button>';
+                html += '<div class="option-summary">';
+                html += '<div class="opt-label">' + (opt.label ? esc(opt.label) : 'הקשה ' + esc(opt.key)) + '</div>';
+                html += '<div><span class="opt-action-badge ' + badgeClass + '">' + badgeText + '</span> ' + summaryText + '</div>';
                 html += '</div>';
+                html += '<span class="option-expand-icon">&#9654;</span>';
+                html += '<button class="btn btn-icon btn-danger btn-sm" onclick="event.stopPropagation();removeOption(' + idx + ',' + oi + ')" style="flex-shrink:0">&#10005;</button>';
+                html += '</div>';
+
+                // Body (expandable)
+                html += '<div class="option-card-body">';
+
+                // Label
+                html += '<div class="option-fields">';
+                html += '<div class="opt-field"><label>תיאור הקשה</label>';
+                html += '<input type="text" value="' + esc(opt.label || '') + '" onchange="updateOption(' + idx + ',' + oi + ',\'label\',this.value)" placeholder="למשל: כן, אישור, בחירה..."></div>';
+
+                // Action type picker
+                html += '<div class="opt-field"><label>מה קורה כשלוחצים?</label></div>';
+                html += '<div class="action-type-grid">';
+                html += '<div class="action-type-btn' + (action === 'update_data' ? ' sel-update' : '') + '" onclick="setOptionAction(' + idx + ',' + oi + ',\'update_data\')">';
+                html += '<span class="act-icon">&#128203;</span><span class="act-label">עדכון נתון</span></div>';
+                html += '<div class="action-type-btn' + (action === 'goto_block' ? ' sel-goto' : '') + '" onclick="setOptionAction(' + idx + ',' + oi + ',\'goto_block\')">';
+                html += '<span class="act-icon">&#10145;</span><span class="act-label">מעבר לבלוק</span></div>';
+                html += '<div class="action-type-btn' + (action === 'activate_module' ? ' sel-module' : '') + '" onclick="setOptionAction(' + idx + ',' + oi + ',\'activate_module\')">';
+                html += '<span class="act-icon">&#9881;</span><span class="act-label">שלוחה/מודול</span></div>';
+                html += '</div>';
+
+                // Action-specific fields
+                if (action === 'update_data') {
+                    html += '<div class="opt-field"><label>ערך לשמירה בטבלה</label>';
+                    html += '<input type="text" value="' + esc(opt.value || '') + '" onchange="updateOption(' + idx + ',' + oi + ',\'value\',this.value)" placeholder="למשל: כן, משה, בית ספר..."></div>';
+                    html += '<div class="opt-field"><label>שמור בעמודה (אופציונלי - דורס את ברירת המחדל)</label>';
+                    html += '<select onchange="updateOption(' + idx + ',' + oi + ',\'targetColumn\',this.value)">';
+                    html += '<option value="">-- ברירת מחדל --</option>';
+                    cols.forEach(function(c) {
+                        html += '<option value="' + c.id + '"' + (opt.targetColumn === c.id ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
+                    });
+                    html += '</select></div>';
+                } else if (action === 'goto_block') {
+                    html += '<div class="opt-field"><label>עבור לבלוק</label>';
+                    html += '<select onchange="updateOption(' + idx + ',' + oi + ',\'gotoBlockId\',this.value)">';
+                    html += '<option value="">-- בחר בלוק --</option>';
+                    form.steps.forEach(function(s, si) {
+                        if (si === idx) return; // skip self
+                        var sIcon = s.type === 'display_data' ? '&#128266;' : s.type === 'collect_input' ? '&#127908;' : s.type === 'auto_capture' ? '&#128268;' : '&#9733;';
+                        html += '<option value="' + s.id + '"' + (opt.gotoBlockId === s.id ? ' selected' : '') + '>' + sIcon + ' ' + (si + 1) + ': ' + esc(s.name) + '</option>';
+                    });
+                    html += '</select></div>';
+                } else if (action === 'activate_module') {
+                    html += '<div class="opt-field"><label>שם שלוחה / מזהה מודול</label>';
+                    html += '<input type="text" value="' + esc(opt.moduleId || '') + '" onchange="updateOption(' + idx + ',' + oi + ',\'moduleId\',this.value)" placeholder="למשל: ext_100, billing_module"></div>';
+                }
+
+                html += '</div>'; // option-fields
+                html += '</div>'; // option-card-body
+                html += '</div>'; // option-card
             });
-            html += '<button class="btn btn-sm btn-secondary" onclick="addOption(' + idx + ')">+ אפשרות</button>';
+            html += '<button class="btn btn-sm btn-secondary" onclick="addOption(' + idx + ')">+ הקשה חדשה</button>';
         }
     }
 
@@ -2329,6 +2471,27 @@ function updateOption(stepIdx, optIdx, key, val) {
     if (!form) return;
     form.steps[stepIdx].options[optIdx][key] = val;
     saveDB();
+    // Re-render for action-related changes
+    if (key === 'label' || key === 'value' || key === 'gotoBlockId' || key === 'moduleId' || key === 'targetColumn') {
+        editForm(editingFormId);
+    }
+}
+
+function toggleOptionCard(stepIdx, optIdx) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    var opt = form.steps[stepIdx].options[optIdx];
+    opt._open = !opt._open;
+    editForm(editingFormId);
+}
+
+function setOptionAction(stepIdx, optIdx, action) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    form.steps[stepIdx].options[optIdx].action = action;
+    form.steps[stepIdx].options[optIdx]._open = true;
+    saveDB();
+    editForm(editingFormId);
 }
 
 // ============ RECORDING BANK ============
