@@ -1,0 +1,183 @@
+{
+  "formName": "סקריפט הרשמה לטיול",
+  "tableName": "טבלת תלמידים",
+  "columns": ["טלפון", "שם תלמיד", "כיתה", "השתתף בטיול אשתקד"],
+  "blocks": [
+    {
+      "id": "block_001",
+      "type": "auto_capture",
+      "name": "זיהוי מתקשר",
+      "row": 1,
+      "tableId": "tbl_1",
+      "targetColumn": "טלפון",
+      "systemField": "phone",
+      "interruptible": false,
+      "nextAction": "",
+      "nextTarget": ""
+    },
+    {
+      "id": "block_002",
+      "type": "display_data",
+      "name": "הודעת פתיחה",
+      "row": 1,
+      "tableId": "tbl_1",
+      "targetColumn": "",
+      "interruptible": true,
+      "nextAction": "",
+      "nextTarget": "",
+      "conditional": false,
+      "segments": [
+        { "type": "text", "text": "שלום וברוכים הבאים למערכת ההרשמה" },
+        { "type": "recording", "recName": "welcome_001" }
+      ]
+    },
+    {
+      "id": "block_003",
+      "type": "collect_input",
+      "name": "הקלטת שם",
+      "row": 1,
+      "tableId": "tbl_1",
+      "targetColumn": "שם תלמיד",
+      "interruptible": false,
+      "nextAction": "",
+      "nextTarget": "",
+      "promptType": "tts",
+      "promptText": "אנא הקליטו את שמכם המלא",
+      "promptFile": "",
+      "inputType": "voice",
+      "retryOnInvalid": true,
+      "options": []
+    },
+    {
+      "id": "block_004",
+      "type": "collect_input",
+      "name": "בחירת כיתה",
+      "row": 2,
+      "tableId": "tbl_1",
+      "targetColumn": "כיתה",
+      "interruptible": false,
+      "nextAction": "",
+      "nextTarget": "",
+      "promptType": "tts",
+      "promptText": "הקישו 1 עבור כיתה א, 2 עבור כיתה ב, 3 עבור כיתה ג",
+      "promptFile": "",
+      "inputType": "dtmf",
+      "retryOnInvalid": true,
+      "options": [
+        {
+          "key": "1",
+          "label": "כיתה א",
+          "value": "כיתה א",
+          "action": "update_data",
+          "targetColumn": "כיתה",
+          "gotoBlockId": "",
+          "moduleId": ""
+        },
+        {
+          "key": "2",
+          "label": "כיתה ב",
+          "value": "כיתה ב",
+          "action": "update_data",
+          "targetColumn": "כיתה",
+          "gotoBlockId": "",
+          "moduleId": ""
+        },
+        {
+          "key": "3",
+          "label": "כיתה ג",
+          "value": "כיתה ג",
+          "action": "update_data",
+          "targetColumn": "כיתה",
+          "gotoBlockId": "",
+          "moduleId": ""
+        }
+      ]
+    },
+    {
+      "id": "block_005",
+      "type": "collect_input",
+      "name": "הרשמה לטיול",
+      "row": 2,
+      "tableId": "tbl_1",
+      "targetColumn": "השתתף בטיול אשתקד",
+      "interruptible": false,
+      "nextAction": "",
+      "nextTarget": "",
+      "promptType": "tts",
+      "promptText": "האם ברצונכם להירשם לטיול? הקישו 1 עבור כן, 2 עבור לא",
+      "promptFile": "",
+      "inputType": "dtmf",
+      "retryOnInvalid": true,
+      "options": [
+        {
+          "key": "1",
+          "label": "כן",
+          "value": "כן",
+          "action": "update_data",
+          "targetColumn": "השתתף בטיול אשתקד",
+          "gotoBlockId": "",
+          "moduleId": ""
+        },
+        {
+          "key": "2",
+          "label": "לא",
+          "value": "לא",
+          "action": "goto_block",
+          "targetColumn": "",
+          "gotoBlockId": "block_007",
+          "moduleId": ""
+        }
+      ]
+    },
+    {
+      "id": "block_006",
+      "type": "display_data",
+      "name": "תנאי - בדיקת הרשמה",
+      "row": 3,
+      "tableId": "tbl_1",
+      "targetColumn": "",
+      "interruptible": false,
+      "nextAction": "",
+      "nextTarget": "",
+      "conditional": true,
+      "conditionType": "equals",
+      "conditionColumn": "השתתף בטיול אשתקד",
+      "segments": [],
+      "conditions": [
+        {
+          "value": "כן",
+          "segments": [
+            { "type": "text", "text": "נרשמתם בהצלחה לטיול" }
+          ],
+          "endAction": "activate_module",
+          "endTarget": "ext_200"
+        },
+        {
+          "value": "לא",
+          "segments": [
+            { "type": "text", "text": "תודה, אולי בפעם הבאה" }
+          ],
+          "endAction": "goto_block",
+          "endTarget": "block_007"
+        }
+      ]
+    },
+    {
+      "id": "block_007",
+      "type": "display_data",
+      "name": "סיכום",
+      "row": 3,
+      "tableId": "tbl_1",
+      "targetColumn": "",
+      "interruptible": false,
+      "nextAction": "activate_module",
+      "nextTarget": "ext_100",
+      "conditional": false,
+      "segments": [
+        { "type": "text", "text": "תודה רבה" },
+        { "type": "column", "columnName": "שם תלמיד" },
+        { "type": "text", "text": "להתראות" }
+      ]
+    }
+  ]
+}
