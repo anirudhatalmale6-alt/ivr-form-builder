@@ -895,20 +895,37 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 .track-row:hover { background: rgba(255,255,255,0.02); }
 .track-row.active-row { background: rgba(67,97,238,0.08); }
 .track-row.active-row .track-label { color: rgba(255,255,255,0.7); }
-.track-row-name {
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    color: rgba(255,255,255,0.5);
+.track-row-name-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
     cursor: pointer;
-    min-width: 40px;
-    max-width: 160px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     transition: all 0.2s;
 }
-.track-row-name:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); }
+.track-row-name-bar:hover { background: rgba(255,255,255,0.04); }
+.track-row-num {
+    background: rgba(67,97,238,0.25);
+    color: rgba(255,255,255,0.7);
+    font-size: 11px;
+    font-weight: 700;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    flex-shrink: 0;
+}
+.track-row-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.75);
+    cursor: pointer;
+}
+.active-row .track-row-name { color: #fff; }
+.active-row .track-row-num { background: rgba(67,97,238,0.5); color: #fff; }
 .add-row-btn {
     display: flex;
     align-items: center;
@@ -1869,9 +1886,13 @@ function renderCanvasBlocks(form, table) {
 
         var rowName = (form.rowNames && form.rowNames[row.row]) || '';
         html += '<div class="track-row' + (rowExpanded ? ' expanded' : '') + (isActive ? ' active-row' : '') + '" ondragover="onRowDragOver(event)" ondrop="onRowDrop(' + row.row + ',event)">';
+        // Row name label above blocks
+        html += '<div class="track-row-name-bar" onclick="event.stopPropagation();editRowName(' + row.row + ',this.querySelector(\'.track-row-name\'))">';
+        html += '<span class="track-row-num">' + (ri + 1) + '</span>';
+        html += '<span class="track-row-name">' + (rowName ? esc(rowName) : '<span style=\'color:rgba(255,255,255,0.25);font-size:11px;font-weight:400\'>+ הוסף שם לשורה</span>') + '</span>';
+        html += '</div>';
         html += '<div class="track-row-header" onclick="setActiveRow(' + row.row + ')">';
         html += '<div class="track-label">' + (ri + 1) + '</div>';
-        html += '<div class="track-row-name" onclick="event.stopPropagation();editRowName(' + row.row + ',this)" title="לחץ לעריכת שם השורה">' + (rowName ? esc(rowName) : '<span style=\'color:rgba(255,255,255,0.2);font-size:11px\'>+ שם</span>') + '</div>';
         html += '<div class="track-blocks">';
 
         if (row.blocks.length === 0) {
@@ -2044,7 +2065,7 @@ function editRowName(rowNum, el) {
     input.type = 'text';
     input.value = current;
     input.placeholder = 'שם השורה...';
-    input.style.cssText = 'padding:3px 6px;border:1px solid rgba(67,97,238,0.5);border-radius:4px;font-size:12px;font-family:inherit;background:rgba(0,0,0,0.3);color:#fff;width:140px;direction:rtl';
+    input.style.cssText = 'padding:4px 8px;border:1px solid rgba(67,97,238,0.5);border-radius:4px;font-size:13px;font-weight:600;font-family:inherit;background:rgba(0,0,0,0.3);color:#fff;width:250px;direction:rtl';
     el.innerHTML = '';
     el.appendChild(input);
     input.focus();
