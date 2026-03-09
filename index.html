@@ -2674,17 +2674,24 @@ function renderBlockEditorContent(step, idx, form, table) {
             html += '<div class="form-row full"><div class="form-group"><label style="font-size:14px;font-weight:700">&#9997; נוסחה (אופציונלי)</label>';
             html += '<small style="display:block;color:var(--muted);margin-bottom:6px">אם ריק — ישמיע את ערך העמודה. אם מלא — ישמיע תוצאת חישוב.</small>';
 
-            // Quick insert buttons for columns
-            html += '<div style="margin-bottom:6px"><div style="display:flex;flex-wrap:wrap;gap:4px">';
+            // Quick insert buttons for permanent columns (blue)
+            html += '<div style="margin-bottom:6px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">&#128190; קבועה:</label><div style="display:flex;flex-wrap:wrap;gap:4px">';
             cols.forEach(function(c) {
                 html += '<button class="btn btn-sm" style="background:#e8f0fe;color:#1a73e8;font-size:11px;padding:3px 7px" onclick="insertToDisplayFormula(' + idx + ',\'[' + esc(c.name) + ']\')">[' + esc(c.name) + ']</button>';
+            });
+            html += '</div></div>';
+
+            // Quick insert buttons for temp columns (orange)
+            html += '<div style="margin-bottom:6px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">&#9203; זמנית:</label><div style="display:flex;flex-wrap:wrap;gap:4px">';
+            cols.forEach(function(c) {
+                html += '<button class="btn btn-sm" style="background:#fff3e0;color:#e65100;font-size:11px;padding:3px 7px" onclick="insertToDisplayFormula(' + idx + ',\'{' + esc(c.name) + '}\')">{' + esc(c.name) + '}</button>';
             });
             html += '</div></div>';
 
             // Operator buttons
             html += '<div style="margin-bottom:6px"><div style="display:flex;flex-wrap:wrap;gap:4px">';
             ['+', '-', '*', '/', '(', ')'].forEach(function(op) {
-                html += '<button class="btn btn-sm" style="background:#fff3e0;color:#e65100;font-size:11px;padding:3px 7px;font-family:monospace" onclick="insertToDisplayFormula(' + idx + ',\' ' + op + ' \')">' + op + '</button>';
+                html += '<button class="btn btn-sm" style="background:#f3e5f5;color:#6a1b9a;font-size:11px;padding:3px 7px;font-family:monospace" onclick="insertToDisplayFormula(' + idx + ',\' ' + op + ' \')">' + op + '</button>';
             });
             html += '</div></div>';
 
@@ -2710,10 +2717,17 @@ function renderBlockEditorContent(step, idx, form, table) {
             // Free-form expression editor
             html += '<div class="form-row full"><div class="form-group"><label style="font-size:14px;font-weight:700">&#9997; עורך נוסחאות</label></div></div>';
 
-            // Quick insert buttons for columns
-            html += '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">הכנס עמודה:</label><div style="display:flex;flex-wrap:wrap;gap:4px">';
+            // Quick insert buttons for columns (permanent - blue)
+            html += '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">&#128190; עמודה קבועה:</label><div style="display:flex;flex-wrap:wrap;gap:4px">';
             cols.forEach(function(c) {
                 html += '<button class="btn btn-sm" style="background:#e8f0fe;color:#1a73e8;font-size:11px;padding:4px 8px" onclick="insertToFormula(' + idx + ',\'[' + esc(c.name) + ']\')">[' + esc(c.name) + ']</button>';
+            });
+            html += '</div></div>';
+
+            // Quick insert buttons for temp columns (orange)
+            html += '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">&#9203; עמודה זמנית:</label><div style="display:flex;flex-wrap:wrap;gap:4px">';
+            cols.forEach(function(c) {
+                html += '<button class="btn btn-sm" style="background:#fff3e0;color:#e65100;font-size:11px;padding:4px 8px" onclick="insertToFormula(' + idx + ',\'{' + esc(c.name) + '}\')">{' + esc(c.name) + '}</button>';
             });
             html += '</div></div>';
 
@@ -2792,7 +2806,15 @@ function renderBlockEditorContent(step, idx, form, table) {
         cols.forEach(function(c) {
             html += '<option value="' + c.id + '"' + (step.targetColumn === c.id ? ' selected' : '') + '>' + c.num + '. ' + esc(c.name) + '</option>';
         });
-        html += '</select></div></div>';
+        html += '</select></div>';
+        html += '<div class="form-group"><label>סוג שמירה</label>';
+        html += '<div style="display:flex;gap:4px">';
+        html += '<button class="btn btn-sm" style="' + (step.saveMode !== 'temp' ? 'background:#e8f0fe;color:#1a73e8;font-weight:700' : 'background:#f0f0f0;color:#888') + '" onclick="updateStep(' + idx + ',\'saveMode\',\'permanent\');editForm(editingFormId)">&#128190; קבועה</button>';
+        html += '<button class="btn btn-sm" style="' + (step.saveMode === 'temp' ? 'background:#fff3e0;color:#e65100;font-weight:700' : 'background:#f0f0f0;color:#888') + '" onclick="updateStep(' + idx + ',\'saveMode\',\'temp\');editForm(editingFormId)">&#9203; זמנית</button>';
+        html += '</div></div></div>';
+        if (step.saveMode === 'temp') {
+            html += '<div class="form-row full"><small style="color:#e65100;background:#fff3e0;padding:4px 10px;border-radius:6px;display:inline-block">&#9203; הנתון יישמר זמנית לזמן השיחה בלבד — לא יירשם בטבלה</small></div>';
+        }
 
         // Retry option
         html += '<div class="form-row full"><div class="form-group">';
