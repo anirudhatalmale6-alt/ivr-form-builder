@@ -895,6 +895,20 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 .track-row:hover { background: rgba(255,255,255,0.02); }
 .track-row.active-row { background: rgba(67,97,238,0.08); }
 .track-row.active-row .track-label { color: rgba(255,255,255,0.7); }
+.track-row-name {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    min-width: 40px;
+    max-width: 160px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all 0.2s;
+}
+.track-row-name:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); }
 .add-row-btn {
     display: flex;
     align-items: center;
@@ -1722,7 +1736,7 @@ function createForm() {
     }
     var name = prompt('שם הטופס:');
     if (!name) return;
-    var f = { id: genId(), name: name, tableId: DB.tables[0].id, steps: [] };
+    var f = { id: genId(), name: name, tableId: DB.tables[0].id, steps: [], rowNames: {} };
     DB.forms.push(f);
     saveDB();
     editForm(f.id);
@@ -1853,9 +1867,11 @@ function renderCanvasBlocks(form, table) {
         var rowExpanded = row.blocks.some(function(b) { return b.step._expanded; });
         var isActive = row.row === activeRow;
 
+        var rowName = (form.rowNames && form.rowNames[row.row]) || '';
         html += '<div class="track-row' + (rowExpanded ? ' expanded' : '') + (isActive ? ' active-row' : '') + '" ondragover="onRowDragOver(event)" ondrop="onRowDrop(' + row.row + ',event)">';
         html += '<div class="track-row-header" onclick="setActiveRow(' + row.row + ')">';
         html += '<div class="track-label">' + (ri + 1) + '</div>';
+        html += '<div class="track-row-name" onclick="event.stopPropagation();editRowName(' + row.row + ',this)" title="לחץ לעריכת שם השורה">' + (rowName ? esc(rowName) : '<span style=\'color:rgba(255,255,255,0.2);font-size:11px\'>+ שם</span>') + '</div>';
         html += '<div class="track-blocks">';
 
         if (row.blocks.length === 0) {
@@ -2017,6 +2033,37 @@ function toggleBlockRow(idx) {
 function setActiveRow(rowNum) {
     activeRow = rowNum;
     editForm(editingFormId);
+}
+
+function editRowName(rowNum, el) {
+    var form = DB.forms.find(function(f) { return f.id === editingFormId; });
+    if (!form) return;
+    if (!form.rowNames) form.rowNames = {};
+    var current = form.rowNames[rowNum] || '';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.value = current;
+    input.placeholder = 'שם השורה...';
+    input.style.cssText = 'padding:3px 6px;border:1px solid rgba(67,97,238,0.5);border-radius:4px;font-size:12px;font-family:inherit;background:rgba(0,0,0,0.3);color:#fff;width:140px;direction:rtl';
+    el.innerHTML = '';
+    el.appendChild(input);
+    input.focus();
+    input.select();
+    function save() {
+        var val = input.value.trim();
+        if (val) {
+            form.rowNames[rowNum] = val;
+        } else {
+            delete form.rowNames[rowNum];
+        }
+        saveDB();
+        editForm(editingFormId);
+    }
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); save(); }
+        if (e.key === 'Escape') { editForm(editingFormId); }
+    });
 }
 
 function addNewRow() {
